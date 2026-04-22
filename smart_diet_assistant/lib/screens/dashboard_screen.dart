@@ -9,6 +9,7 @@ import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
+import '../widgets/fasting_timer_widget.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -42,6 +43,8 @@ class DashboardScreen extends StatelessWidget {
                   _buildMacroRow(userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 30),
+                  const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -104,7 +107,7 @@ class DashboardScreen extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: CircleAvatar(
-            backgroundColor: const Color(0xFF059669).withOpacity(0.1),
+            backgroundColor: const Color(0xFF059669).withValues(alpha: 0.1),
             child: const Icon(Icons.person, color: Color(0xFF059669)),
           ),
         ),
@@ -119,7 +122,7 @@ class DashboardScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Row(
@@ -186,7 +189,7 @@ class DashboardScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withOpacity(0.1),
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -221,7 +224,7 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
@@ -253,9 +256,9 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withOpacity(0.2) : Colors.transparent),
+          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withValues(alpha: 0.2) : Colors.transparent),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
@@ -266,7 +269,7 @@ class DashboardScreen extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _getMealColor(meal.type).withOpacity(0.1),
+                  color: _getMealColor(meal.type).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type)),

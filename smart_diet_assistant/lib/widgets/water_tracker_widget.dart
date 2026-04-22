@@ -19,7 +19,7 @@ class WaterTrackerWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B82F6).withOpacity(0.08),
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -54,7 +54,7 @@ class WaterTrackerWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -98,7 +98,7 @@ class WaterTrackerWidget extends StatelessWidget {
                           ),
                         ).animate(target: progress).shimmer(
                           duration: 2.seconds,
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                       // Wave overlay (Simplified animation)
@@ -109,7 +109,7 @@ class WaterTrackerWidget extends StatelessWidget {
                         child: progress > 0 && progress < 1
                             ? Icon(
                                 Icons.waves,
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 size: 40,
                               ).animate(onPlay: (controller) => controller.repeat()).moveX(
                                     begin: -20,
@@ -174,7 +174,7 @@ class WaterTrackerWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
+          border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Center(

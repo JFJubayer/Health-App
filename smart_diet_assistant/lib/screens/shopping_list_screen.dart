@@ -74,7 +74,7 @@ class ShoppingListScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -96,7 +96,7 @@ class ShoppingListScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -125,7 +125,7 @@ class ShoppingListScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shopping_basket_outlined, size: 80, color: Colors.grey.withOpacity(0.3)),
+          Icon(Icons.shopping_basket_outlined, size: 80, color: Colors.grey.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text(
             'Your shopping list is empty',
@@ -134,7 +134,7 @@ class ShoppingListScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Add some meals to your plan first!',
-            style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey.withOpacity(0.7)),
+            style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey.withValues(alpha: 0.7)),
           ),
         ],
       ),

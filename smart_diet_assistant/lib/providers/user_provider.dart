@@ -16,6 +16,10 @@ class UserProvider with ChangeNotifier {
   int _waterIntake = 0;
   int _waterGoal = 2500; // Default
   Set<String> _checkedIngredients = {};
+  
+  int _fastingDurationHours = 16;
+  DateTime? _fastingStartTime;
+  int _fastingReminderOffset = 0;
 
   UserModel? get user => _user;
   double get bmr => _bmr;
@@ -26,6 +30,11 @@ class UserProvider with ChangeNotifier {
   int get waterIntake => _waterIntake;
   int get waterGoal => _waterGoal;
   Set<String> get checkedIngredients => _checkedIngredients;
+
+  int get fastingDurationHours => _fastingDurationHours;
+  DateTime? get fastingStartTime => _fastingStartTime;
+  int get fastingReminderOffset => _fastingReminderOffset;
+  bool get isFasting => _fastingStartTime != null;
 
   List<String> get shoppingList {
     final ingredients = <String>{};
@@ -45,22 +54,46 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> _initialLoad() async {
-    _user = await PersistenceService.getUser();
-    if (_user != null) {
-      _bmr = HealthService.calculateBMR(_user!);
-      _tdee = HealthService.calculateTDEE(_bmr);
-      _calorieTier = DietService.getCalorieTier(_tdee);
-      _mealPlan = await PersistenceService.getMeals() ?? [];
-      _waterIntake = await PersistenceService.getWaterIntake();
-      _waterGoal = await PersistenceService.getWaterGoal() ?? (_user!.weightKg * 35).toInt();
-      _checkedIngredients = await PersistenceService.getCheckedIngredients();
+    try {
+      debugPrint('UserProvider: Starting initial load...');
+      _user = await PersistenceService.getUser();
+      debugPrint('UserProvider: User data loaded: ${_user != null}');
       
-      // Initialize notifications
-      await NotificationService.initialize(this);
-      _rescheduleNotifications();
+      if (_user != null) {
+        _bmr = HealthService.calculateBMR(_user!);
+        _tdee = HealthService.calculateTDEE(_bmr);
+        _calorieTier = DietService.getCalorieTier(_tdee);
+        
+        debugPrint('UserProvider: Loading meals...');
+        _mealPlan = await PersistenceService.getMeals() ?? [];
+        
+        debugPrint('UserProvider: Loading water data...');
+        _waterIntake = await PersistenceService.getWaterIntake();
+        _waterGoal = await PersistenceService.getWaterGoal() ?? (_user!.weightKg * 35).toInt();
+        
+        debugPrint('UserProvider: Loading checked ingredients...');
+        _checkedIngredients = await PersistenceService.getCheckedIngredients();
+        
+        debugPrint('UserProvider: Loading fasting data...');
+        _fastingDurationHours = await PersistenceService.getFastingDuration();
+        _fastingStartTime = await PersistenceService.getFastingStartTime();
+        _fastingReminderOffset = await PersistenceService.getFastingReminderOffset();
+        
+        // Initialize notifications
+        debugPrint('UserProvider: Initializing NotificationService...');
+        await NotificationService.initialize(this);
+        await NotificationService.requestPermissions();
+        _rescheduleNotifications();
+        debugPrint('UserProvider: NotificationService initialized.');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error during UserProvider initial load: $e');
+      debugPrint(stackTrace.toString());
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+      debugPrint('UserProvider: Initial load complete, isLoading = false');
     }
-    _isLoading = false;
-    notifyListeners();
   }
 
   void addWater(int ml) {
@@ -97,6 +130,45 @@ class UserProvider with ChangeNotifier {
     _checkedIngredients.clear();
     PersistenceService.saveCheckedIngredients(_checkedIngredients);
     notifyListeners();
+  }
+
+  void startFasting() {
+    _fastingStartTime = DateTime.now();
+    PersistenceService.saveFastingStartTime(_fastingStartTime);
+    _rescheduleFastingNotifications();
+    notifyListeners();
+  }
+
+  void endFasting() {
+    _fastingStartTime = null;
+    PersistenceService.saveFastingStartTime(null);
+    NotificationService.cancelFastingNotifications();
+    notifyListeners();
+  }
+
+  void setFastingSettings({int? durationHours, int? reminderOffsetMinutes}) {
+    if (durationHours != null) {
+      _fastingDurationHours = durationHours;
+      PersistenceService.saveFastingDuration(durationHours);
+    }
+    if (reminderOffsetMinutes != null) {
+      _fastingReminderOffset = reminderOffsetMinutes;
+      PersistenceService.saveFastingReminderOffset(reminderOffsetMinutes);
+    }
+    if (isFasting) {
+      _rescheduleFastingNotifications();
+    }
+    notifyListeners();
+  }
+
+  void _rescheduleFastingNotifications() {
+    if (_fastingStartTime != null) {
+      NotificationService.scheduleFastingEndNotification(
+        _fastingStartTime!,
+        _fastingDurationHours,
+        _fastingReminderOffset,
+      );
+    }
   }
 
   void setUserData(UserModel user) {
@@ -169,6 +241,7 @@ class UserProvider with ChangeNotifier {
     _tdee = 0.0;
     _calorieTier = '';
     _mealPlan = [];
+    _fastingStartTime = null;
     PersistenceService.clearAll();
     notifyListeners();
   }

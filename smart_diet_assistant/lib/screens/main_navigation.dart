@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dashboard_screen.dart';
 import 'meals_screen.dart';
 import 'profile_screen.dart';
@@ -9,7 +8,7 @@ class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
   @override
-  _MainNavigationState createState() => _MainNavigationState();
+  State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
@@ -34,7 +33,7 @@ class _MainNavigationState extends State<MainNavigation> {
           });
         },
         backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFF059669).withOpacity(0.1),
+        indicatorColor: const Color(0xFF059669).withValues(alpha: 0.1),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           _buildDestination(Icons.dashboard_outlined, Icons.dashboard_rounded, 'Overview'),

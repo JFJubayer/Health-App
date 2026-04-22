@@ -59,9 +59,9 @@ class ExportService {
               ...meals.map((meal) => pw.Container(
                 margin: const pw.EdgeInsets.only(bottom: 12),
                 padding: const pw.EdgeInsets.all(10),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColors.grey100,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
                 ),
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -76,7 +76,7 @@ class ExportService {
                     pw.Text('${meal.calories} kcal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
-              )).toList(),
+              )),
               
               pw.Spacer(),
               pw.Divider(thickness: 0.5),

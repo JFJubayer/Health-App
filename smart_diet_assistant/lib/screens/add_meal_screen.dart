@@ -20,7 +20,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   final _searchController = TextEditingController();
   
   MealType _selectedType = MealType.breakfast;
-  List<Map<String, dynamic>> _addedComponents = [];
+  final List<Map<String, dynamic>> _addedComponents = [];
 
   // Aggregated Values
   double _totalCalories = 0;
@@ -121,7 +121,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final emerald = const Color(0xFF059669);
+    const emerald = Color(0xFF059669);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -270,7 +270,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -286,7 +286,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
           Row(
             children: [
               IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _updateWeight(index, (weight - 10).clamp(10, 1000))),
-              Container(
+              SizedBox(
                 width: 60,
                 child: Text('${weight.toInt()}g', textAlign: TextAlign.center, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
@@ -303,9 +303,9 @@ class _AddMealScreenState extends State<AddMealScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: emerald.withOpacity(0.05),
+        color: emerald.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: emerald.withOpacity(0.1)),
+        border: Border.all(color: emerald.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [
