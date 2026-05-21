@@ -246,7 +246,7 @@ class NotificationService {
       ],
     );
     
-    final platformChannelSpecifics = const NotificationDetails(android: androidPlatformChannelSpecifics);
+    const platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
     
     await _notificationsPlugin.show(
       0,
