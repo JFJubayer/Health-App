@@ -38,6 +38,10 @@ class DashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (userProvider.gamification.currentStreak > 0)
+                    _buildStreakBanner(userProvider.gamification.currentStreak).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
+                  if (userProvider.gamification.currentStreak > 0)
+                    const SizedBox(height: 20),
                   _buildHealthRing(context, consumed, totalTarget, progress).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   _buildMacroRow(userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
@@ -112,6 +116,51 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStreakBanner(int streak) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF8C00), Color(0xFFFF512F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFFFF512F).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('🔥', style: TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$streak Day Tracking Streak!',
+                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  'Keep it up! Consistency is key.',
+                  style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

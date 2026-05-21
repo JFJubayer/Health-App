@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
+import '../models/gamification_model.dart';
 
 class PersistenceService {
   static const String _keyUser = 'user_data';
@@ -12,6 +13,35 @@ class PersistenceService {
   static const String _keyFastingDuration = 'fasting_duration';
   static const String _keyFastingStartTime = 'fasting_start_time';
   static const String _keyFastingReminderOffset = 'fasting_reminder_offset';
+
+  static const String _keyGamification = 'gamification_data';
+
+  static Future<void> saveGamification(GamificationModel data) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyGamification, jsonEncode(data.toMap()));
+  }
+
+  static Future<GamificationModel> getGamification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_keyGamification);
+    if (data == null) return GamificationModel();
+    return GamificationModel.fromMap(jsonDecode(data));
+  }
+
+  static Future<void> saveDailySummary(String dateStr, int consumedCalories, int waterIntake) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('summary_$dateStr', jsonEncode({
+      'calories': consumedCalories,
+      'water': waterIntake,
+    }));
+  }
+
+  static Future<Map<String, dynamic>?> getDailySummary(String dateStr) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString('summary_$dateStr');
+    if (data == null) return null;
+    return jsonDecode(data);
+  }
 
   static Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();

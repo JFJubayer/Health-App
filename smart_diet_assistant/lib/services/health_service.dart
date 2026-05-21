@@ -16,4 +16,19 @@ class HealthService {
   static double calculateTDEE(double bmr) {
     return bmr * 1.55;
   }
+
+  /// Calculates Body Mass Index (BMI)
+  static double calculateBMI(double weightKg, double heightCm) {
+    if (heightCm == 0) return 0;
+    double heightM = heightCm / 100;
+    return weightKg / (heightM * heightM);
+  }
+
+  /// Returns BMI category based on WHO standards
+  static String getBMICategory(double bmi) {
+    if (bmi < 18.5) return 'Underweight';
+    if (bmi >= 18.5 && bmi < 25) return 'Normal Weight';
+    if (bmi >= 25 && bmi < 30) return 'Overweight';
+    return 'Obesity';
+  }
 }

@@ -28,8 +28,8 @@ class NotificationService {
     try {
       debugPrint('NotificationService: Getting local timezone...');
       // Use a timeout to prevent hanging on Linux if timezone DB is missing/corrupt
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone()
-          .timeout(const Duration(seconds: 2), onTimeout: () => 'UTC');
+      final String timeZoneName = (await FlutterTimezone.getLocalTimezone()
+          .timeout(const Duration(seconds: 2), onTimeout: () => TimezoneInfo(identifier: 'UTC'))).identifier;
       debugPrint('NotificationService: Local timezone is $timeZoneName');
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
