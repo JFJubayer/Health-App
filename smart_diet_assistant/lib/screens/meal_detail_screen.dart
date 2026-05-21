@@ -101,7 +101,7 @@ class MealDetailScreen extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withOpacity(0.8)],
+                    colors: [color, color.withValues(alpha: 0.8)],
                   ),
                 ),
               ),
@@ -111,9 +111,9 @@ class MealDetailScreen extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.4),
+                    Colors.black.withValues(alpha: 0.4),
                     Colors.transparent,
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.6),
                   ],
                 ),
               ),
@@ -126,7 +126,7 @@ class MealDetailScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(_getMealIcon(meal.type), color: Colors.white, size: 40),
@@ -153,7 +153,7 @@ class MealDetailScreen extends StatelessWidget {
                 ),
                 Text(
                   '${meal.calories} Calories Total',
-                  style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 16),
+                  style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.9), fontSize: 16),
                 ),
               ],
             ),
@@ -209,7 +209,7 @@ class MealDetailScreen extends StatelessWidget {
                 Text('${comp['weight'].toInt()}g', style: GoogleFonts.outfit(color: const Color(0xFF059669), fontWeight: FontWeight.bold)),
               ],
             ),
-          )).toList()
+          ))
         else
           Wrap(
             spacing: 8,
@@ -242,7 +242,7 @@ class MealDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getMealColor(meal.type).withOpacity(0.1),
+                    color: _getMealColor(meal.type).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Text(

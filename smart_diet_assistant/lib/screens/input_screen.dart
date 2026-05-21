@@ -103,7 +103,7 @@ class _InputScreenState extends State<InputScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF059669).withOpacity(0.1),
+            color: const Color(0xFF059669).withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.analytics_outlined, size: 40, color: Color(0xFF059669)),
@@ -144,7 +144,7 @@ class _InputScreenState extends State<InputScreen> {
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF059669) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? const Color(0xFF059669) : Colors.grey.withOpacity(0.2)),
+          border: Border.all(color: isSelected ? const Color(0xFF059669) : Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -173,8 +173,8 @@ class _InputScreenState extends State<InputScreen> {
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF059669)),
         suffixText: suffix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF059669), width: 2)),
       ),
       validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
@@ -227,7 +227,7 @@ class _InputScreenState extends State<InputScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : null,
+          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : null,
         ),
         child: Text(
           label,
@@ -252,7 +252,7 @@ class _InputScreenState extends State<InputScreen> {
             onSelected: (selected) {
               setState(() => selected ? _selectedConditions.add(c) : _selectedConditions.remove(c));
             },
-            selectedColor: const Color(0xFF059669).withOpacity(0.2),
+            selectedColor: const Color(0xFF059669).withValues(alpha: 0.2),
             checkmarkColor: const Color(0xFF059669),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           )).toList(),

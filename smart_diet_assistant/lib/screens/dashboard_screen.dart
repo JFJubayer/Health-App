@@ -9,6 +9,7 @@ import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
+import '../widgets/fasting_timer_widget.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -37,11 +38,17 @@ class DashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (userProvider.gamification.currentStreak > 0)
+                    _buildStreakBanner(userProvider.gamification.currentStreak).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
+                  if (userProvider.gamification.currentStreak > 0)
+                    const SizedBox(height: 20),
                   _buildHealthRing(context, consumed, totalTarget, progress).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   _buildMacroRow(userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 30),
+                  const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -104,11 +111,56 @@ class DashboardScreen extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: CircleAvatar(
-            backgroundColor: const Color(0xFF059669).withOpacity(0.1),
+            backgroundColor: const Color(0xFF059669).withValues(alpha: 0.1),
             child: const Icon(Icons.person, color: Color(0xFF059669)),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStreakBanner(int streak) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF8C00), Color(0xFFFF512F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFFFF512F).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Text('🔥', style: TextStyle(fontSize: 24)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$streak Day Tracking Streak!',
+                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  'Keep it up! Consistency is key.',
+                  style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -119,7 +171,7 @@ class DashboardScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10)),
         ],
       ),
       child: Row(
@@ -186,7 +238,7 @@ class DashboardScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withOpacity(0.1),
+                    color: const Color(0xFF059669).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -221,7 +273,7 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
@@ -253,9 +305,9 @@ class DashboardScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withOpacity(0.2) : Colors.transparent),
+          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withValues(alpha: 0.2) : Colors.transparent),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: Row(
@@ -266,7 +318,7 @@ class DashboardScreen extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _getMealColor(meal.type).withOpacity(0.1),
+                  color: _getMealColor(meal.type).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type)),

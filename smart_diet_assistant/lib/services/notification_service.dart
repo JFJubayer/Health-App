@@ -3,7 +3,6 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import '../providers/user_provider.dart';
 
 class NotificationService {
@@ -13,6 +12,10 @@ class NotificationService {
   static const String channelName = 'Water Intake Reminders';
   static const String channelDescription = 'Reminders to stay hydrated based on your daily goal.';
 
+  static const String fastingChannelId = 'fasting_reminders';
+  static const String fastingChannelName = 'Fasting Reminders';
+  static const String fastingChannelDescription = 'Reminders for intermittent fasting windows.';
+
   static UserProvider? _userProvider;
 
   static Future<void> initialize(UserProvider userProvider) async {
@@ -20,26 +23,40 @@ class NotificationService {
     
     if (kIsWeb) return;
 
+    debugPrint('NotificationService: Initializing timezones...');
     tz.initializeTimeZones();
     try {
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      debugPrint('NotificationService: Getting local timezone...');
+      // Use a timeout to prevent hanging on Linux if timezone DB is missing/corrupt
+      final String timeZoneName = (await FlutterTimezone.getLocalTimezone()
+          .timeout(const Duration(seconds: 2), onTimeout: () => TimezoneInfo(identifier: 'UTC'))).identifier;
+      debugPrint('NotificationService: Local timezone is $timeZoneName');
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
       debugPrint('Could not initialize timezone for notifications: $e');
+      // Default to UTC if it fails
+      try {
+        tz.setLocalLocation(tz.getLocation('UTC'));
+      } catch (_) {}
     }
 
-    final dynamic initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    final dynamic initializationSettingsDarwin = DarwinInitializationSettings(
+    const dynamic initializationSettingsDarwin = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    final InitializationSettings initializationSettings = InitializationSettings(
+    const dynamic initializationSettingsLinux = LinuxInitializationSettings(
+      defaultActionName: 'Open notification',
+    );
+
+    const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsDarwin,
       macOS: initializationSettingsDarwin,
+      linux: initializationSettingsLinux,
     );
 
     await _notificationsPlugin.initialize(
@@ -53,20 +70,42 @@ class NotificationService {
   static Future<void> _createChannel() async {
     if (kIsWeb) return;
     
-    final dynamic channel = AndroidNotificationChannel(
+    const dynamic channel = AndroidNotificationChannel(
       channelId,
       channelName,
       description: channelDescription,
       importance: Importance.high,
     );
 
-    await _notificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    const dynamic fastingChannel = AndroidNotificationChannel(
+      fastingChannelId,
+      fastingChannelName,
+      description: fastingChannelDescription,
+      importance: Importance.high,
+    );
+
+    final androidImplementation = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation != null) {
+      await androidImplementation.createNotificationChannel(channel);
+      await androidImplementation.createNotificationChannel(fastingChannel);
+    }
+  }
+
+  static Future<void> requestPermissions() async {
+    if (kIsWeb) return;
+
+    final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+      await androidImplementation.requestExactAlarmsPermission();
+    }
   }
 
   static void _onNotificationResponse(NotificationResponse response) async {
-    final String? payload = response.payload;
     final String? actionId = response.actionId;
 
     if (actionId == 'yes_250') {
@@ -79,12 +118,15 @@ class NotificationService {
 
   static Future<void> scheduleSmartWaterReminders(int currentIntake, int goal) async {
     if (kIsWeb) return;
-    
-    await _notificationsPlugin.cancelAll();
 
     final now = DateTime.now();
     const activeRangeStart = 8; // 8 AM
     const activeRangeEnd = 22;   // 10 PM
+    
+    // Cancel previous water reminders (IDs 1000 to 1024)
+    for (int hour = activeRangeStart; hour < activeRangeEnd; hour += 3) {
+      await _notificationsPlugin.cancel(1000 + hour);
+    }
     
     for (int hour = activeRangeStart; hour < activeRangeEnd; hour += 3) {
       final scheduledTime = DateTime(now.year, now.month, now.day, hour);
@@ -97,7 +139,7 @@ class NotificationService {
       final String promptTime = hour > 12 ? '${hour - 12} PM' : '$hour AM';
 
       // Use a dynamic type here to avoid compilation error on Web
-      final dynamic androidDetails = AndroidNotificationDetails(
+      const dynamic androidDetails = AndroidNotificationDetails(
         channelId,
         channelName,
         channelDescription: channelDescription,
@@ -110,16 +152,16 @@ class NotificationService {
         ],
       );
 
-      final dynamic iosDetails = DarwinNotificationDetails(
+      const dynamic iosDetails = DarwinNotificationDetails(
         categoryIdentifier: 'water_actions',
       );
 
       await _notificationsPlugin.zonedSchedule(
-        hour,
+        1000 + hour,
         '💧 Stay Hydrated!',
         'Did you drink water since $promptTime? You\'re a bit behind your goal.',
         tz.TZDateTime.from(scheduledTime, tz.local),
-        NotificationDetails(
+        const NotificationDetails(
           android: androidDetails,
           iOS: iosDetails,
         ),
@@ -129,6 +171,53 @@ class NotificationService {
         payload: expectedIntake.toString(),
       );
     }
+  }
+
+  static Future<void> scheduleFastingEndNotification(DateTime startTime, int durationHours, int reminderOffsetMinutes) async {
+    if (kIsWeb) return;
+    
+    await cancelFastingNotifications();
+    
+    DateTime endTime = startTime.add(Duration(hours: durationHours));
+    DateTime notificationTime = endTime.subtract(Duration(minutes: reminderOffsetMinutes));
+    
+    if (notificationTime.isBefore(DateTime.now())) return;
+    
+    const dynamic androidDetails = AndroidNotificationDetails(
+      fastingChannelId,
+      fastingChannelName,
+      channelDescription: fastingChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const dynamic iosDetails = DarwinNotificationDetails();
+    
+    String title = 'Fasting Goal Reached!';
+    String body = 'You have completed your $durationHours-hour fast. Time to eat!';
+    
+    if (reminderOffsetMinutes > 0) {
+      title = 'Fasting almost over!';
+      body = 'Your $durationHours-hour fast ends in $reminderOffsetMinutes minutes.';
+    }
+
+    await _notificationsPlugin.zonedSchedule(
+      999, // Specific ID for fasting notifications
+      title,
+      body,
+      tz.TZDateTime.from(notificationTime, tz.local),
+      const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  static Future<void> cancelFastingNotifications() async {
+    if (kIsWeb) return;
+    await _notificationsPlugin.cancel(999);
   }
 
   static Future<void> showTestNotification() async {
@@ -143,7 +232,7 @@ class NotificationService {
       return;
     }
 
-    final dynamic androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    const dynamic androidPlatformChannelSpecifics = AndroidNotificationDetails(
       channelId,
       channelName,
       channelDescription: channelDescription,
@@ -157,7 +246,7 @@ class NotificationService {
       ],
     );
     
-    final platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    final platformChannelSpecifics = const NotificationDetails(android: androidPlatformChannelSpecifics);
     
     await _notificationsPlugin.show(
       0,
