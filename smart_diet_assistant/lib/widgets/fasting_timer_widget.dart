@@ -89,21 +89,21 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
                   onPressed: () => Navigator.pop(context),
                   child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    provider.setFastingSettings(
-                      durationHours: tempDuration,
-                      reminderOffsetMinutes: tempOffset,
-                    );
-                    Navigator.pop(context);
-                    setState(() {});
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF059669),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ElevatedButton(
+                    onPressed: () {
+                      provider.setFastingSettings(
+                        durationHours: tempDuration,
+                        reminderOffsetMinutes: tempOffset,
+                      );
+                      Navigator.pop(context);
+                      setState(() {});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Save', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                  child: Text('Save', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
               ],
             );
           }
@@ -150,7 +150,7 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
@@ -174,20 +174,20 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     isFasting ? 'Fasting Window' : 'Eating Window',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
-                      color: const Color(0xFF6B7280),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.settings_outlined, color: Color(0xFF6B7280)),
+                icon: Icon(Icons.settings_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 onPressed: () => _showSettingsDialog(context, provider),
               ),
             ],
@@ -206,9 +206,9 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
                     child: CircularProgressIndicator(
                       value: progress,
                       strokeWidth: 12,
-                      backgroundColor: const Color(0xFFF3F4F6),
+                      backgroundColor: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF3F4F6) : Colors.grey[800]!,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        progress >= 1.0 ? const Color(0xFF059669) : const Color(0xFF8B5CF6)
+                        progress >= 1.0 ? Theme.of(context).colorScheme.primary : const Color(0xFF8B5CF6)
                       ),
                       strokeCap: StrokeCap.round,
                     ).animate(target: isFasting ? 1 : 0).fadeIn(duration: 400.ms),
@@ -221,7 +221,7 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
                         style: GoogleFonts.outfit(
                           fontSize: 36,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1F2937),
+                          color: Theme.of(context).colorScheme.onSurface,
                           height: 1.2,
                         ),
                       ),
@@ -229,7 +229,7 @@ class _FastingTimerWidgetState extends State<FastingTimerWidget> {
                         statusText,
                         style: GoogleFonts.outfit(
                           fontSize: 14,
-                          color: progress >= 1.0 ? const Color(0xFF059669) : const Color(0xFF6B7280),
+                          color: progress >= 1.0 ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: progress >= 1.0 ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),

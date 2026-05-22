@@ -15,7 +15,7 @@ class MealDetailScreen extends StatelessWidget {
     final provider = Provider.of<UserProvider>(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           _buildAppBar(context),
@@ -51,7 +51,7 @@ class MealDetailScreen extends StatelessWidget {
             style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: meal.isConsumed ? Colors.grey[800] : const Color(0xFF059669),
+            backgroundColor: meal.isConsumed ? Colors.grey[800] : Theme.of(context).colorScheme.primary,
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
@@ -199,14 +199,14 @@ class MealDetailScreen extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+              color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(comp['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
-                Text('${comp['weight'].toInt()}g', style: GoogleFonts.outfit(color: const Color(0xFF059669), fontWeight: FontWeight.bold)),
+                Text(comp['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+                Text('${comp['weight'].toInt()}g', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
               ],
             ),
           ))
@@ -217,10 +217,10 @@ class MealDetailScreen extends StatelessWidget {
             children: meal.ingredients.map((ing) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(ing, style: GoogleFonts.outfit(color: const Color(0xFF374151))),
+              child: Text(ing, style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
             )).toList(),
           ),
       ],
@@ -257,7 +257,7 @@ class MealDetailScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     entry.value,
-                    style: GoogleFonts.outfit(fontSize: 16, color: const Color(0xFF4B5563), height: 1.5),
+                    style: GoogleFonts.outfit(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
                   ),
                 ),
               ],
@@ -266,7 +266,7 @@ class MealDetailScreen extends StatelessWidget {
         else
           Text(
             meal.instructions,
-            style: GoogleFonts.outfit(fontSize: 16, color: const Color(0xFF4B5563), height: 1.5),
+            style: GoogleFonts.outfit(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
           ),
       ],
     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1);

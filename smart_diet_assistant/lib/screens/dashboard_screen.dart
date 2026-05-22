@@ -28,7 +28,7 @@ class DashboardScreen extends StatelessWidget {
     final progress = (consumed / totalTarget).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -44,7 +44,7 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 20),
                   _buildHealthRing(context, consumed, totalTarget, progress).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
-                  _buildMacroRow(userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                  _buildMacroRow(context, userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
@@ -55,13 +55,13 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Text(
                         'Today\'s Plan',
-                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                       ),
                       TextButton.icon(
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddMealScreen())),
                         icon: const Icon(Icons.add_circle_outline, size: 20),
                         label: Text('Manual Entry', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF059669)),
+                        style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
                       ),
                     ],
                   ),
@@ -76,7 +76,7 @@ class DashboardScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddMealScreen())),
-        backgroundColor: const Color(0xFF059669),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('Add Meal', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
       ).animate().scale(delay: 1000.ms).fadeIn(),
@@ -88,19 +88,19 @@ class DashboardScreen extends StatelessWidget {
       expandedHeight: 120.0,
       floating: false,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
         title: Text(
           'My Dashboard',
-          style: GoogleFonts.outfit(color: const Color(0xFF1F2937), fontWeight: FontWeight.bold, fontSize: 22),
+          style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        background: Container(color: Colors.white),
+        background: Container(color: Theme.of(context).scaffoldBackgroundColor),
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF059669)),
+          icon: Icon(Icons.picture_as_pdf_outlined, color: Theme.of(context).colorScheme.primary),
           onPressed: () {
             final provider = Provider.of<UserProvider>(context, listen: false);
             if (provider.user != null) {
@@ -111,8 +111,8 @@ class DashboardScreen extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: CircleAvatar(
-            backgroundColor: const Color(0xFF059669).withValues(alpha: 0.1),
-            child: const Icon(Icons.person, color: Color(0xFF059669)),
+            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
           ),
         ),
       ],
@@ -168,7 +168,7 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10)),
@@ -190,13 +190,13 @@ class DashboardScreen extends StatelessWidget {
                       startDegreeOffset: 270,
                       sections: [
                         PieChartSectionData(
-                          color: const Color(0xFF059669),
+                          color: Theme.of(context).colorScheme.primary,
                           value: progress * 100,
                           radius: 12,
                           showTitle: false,
                         ),
                         PieChartSectionData(
-                          color: const Color(0xFFF3F4F6),
+                          color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF3F4F6) : Colors.grey[800]!,
                           value: (1 - progress) * 100,
                           radius: 10,
                           showTitle: false,
@@ -209,11 +209,11 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Text(
                         '${consumed.toInt()}',
-                        style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+                        style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                       ),
                       Text(
                         'of ${target.toInt()} kcal',
-                        style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280)),
+                        style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -232,18 +232,18 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'You have consumed ${(progress * 100).toInt()}% of your daily goal.',
-                  style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF6B7280)),
+                  style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     'On Track!',
-                    style: GoogleFonts.outfit(color: const Color(0xFF059669), fontWeight: FontWeight.bold, fontSize: 12),
+                    style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
               ],
@@ -254,30 +254,30 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMacroRow(UserProvider provider) {
+  Widget _buildMacroRow(BuildContext context, UserProvider provider) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildMacroCard('Protein', provider.totalConsumedProtein, 'g', Colors.orange),
-        _buildMacroCard('Carbs', provider.totalConsumedCarbs, 'g', Colors.blue),
-        _buildMacroCard('Fats', provider.totalConsumedFat, 'g', Colors.purple),
+        _buildMacroCard(context, 'Protein', provider.totalConsumedProtein, 'g', Colors.orange),
+        _buildMacroCard(context, 'Carbs', provider.totalConsumedCarbs, 'g', Colors.blue),
+        _buildMacroCard(context, 'Fats', provider.totalConsumedFat, 'g', Colors.purple),
       ],
     );
   }
 
-  Widget _buildMacroCard(String title, double value, String unit, Color color) {
+  Widget _buildMacroCard(BuildContext context, String title, double value, String unit, Color color) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Column(
           children: [
-            Text(title, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280))),
+            Text(title, style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             Text(
               '${value.toInt()}$unit',
@@ -303,9 +303,9 @@ class DashboardScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withValues(alpha: 0.2) : Colors.transparent),
+          border: Border.all(color: meal.isConsumed ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2) : Colors.transparent),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
           ],
@@ -333,19 +333,19 @@ class DashboardScreen extends StatelessWidget {
                     tag: 'meal_name_${meal.id}',
                     child: Material(
                       color: Colors.transparent,
-                      child: Text(meal.name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(meal.name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                     ),
                   ),
                   Text(
                     '${meal.calories} kcal • ${meal.type.name.capitalize()}',
-                    style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280)),
+                    style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
             Checkbox(
               value: meal.isConsumed,
-              activeColor: const Color(0xFF059669),
+              activeColor: Theme.of(context).colorScheme.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               onChanged: (_) => provider.toggleMealConsumed(meal.id),
             ),

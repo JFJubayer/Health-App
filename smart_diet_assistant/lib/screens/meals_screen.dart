@@ -16,26 +16,26 @@ class MealsScreen extends StatelessWidget {
 
     if (userProvider.user == null || userProvider.mealPlan.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(title: const Text('Meals')),
         body: const Center(child: Text('No meal plan available.')),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Your Diet Plan', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF059669)),
+            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.primary),
             tooltip: 'Regenerate Plan',
             onPressed: () => userProvider.regenerateMeals(),
           ),
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF059669)),
+            icon: Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
             tooltip: 'Export PDF',
             onPressed: () => ExportService.exportToPdf(userProvider.user!, userProvider.mealPlan),
           ),
@@ -66,7 +66,7 @@ class MealsScreen extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8)),
@@ -106,7 +106,7 @@ class MealsScreen extends StatelessWidget {
                             color: Colors.transparent,
                             child: Text(
                               meal.name,
-                              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+                              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                             ),
                           ),
                         ),
@@ -116,12 +116,12 @@ class MealsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF059669).withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${meal.calories} kcal',
-                      style: GoogleFonts.outfit(color: const Color(0xFF059669), fontWeight: FontWeight.bold, fontSize: 13),
+                      style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
                 ],
@@ -135,7 +135,7 @@ class MealsScreen extends StatelessWidget {
                 children: [
                   Text(
                     '${meal.protein.toInt()}g P • ${meal.carbs.toInt()}g C • ${meal.fat.toInt()}g F',
-                    style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF6B7280), fontWeight: FontWeight.w500),
+                    style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
                   ),
                   TextButton.icon(
                     onPressed: () => provider.replaceMeal(meal.id),

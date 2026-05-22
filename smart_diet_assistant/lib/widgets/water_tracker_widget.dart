@@ -15,7 +15,7 @@ class WaterTrackerWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
@@ -39,14 +39,14 @@ class WaterTrackerWidget extends StatelessWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F2937),
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     'Daily goal: ${provider.waterGoal}ml',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
-                      color: const Color(0xFF6B7280),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -77,7 +77,7 @@ class WaterTrackerWidget extends StatelessWidget {
                   height: 140,
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
+                    color: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF3F4F6) : Colors.grey[800]!,
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Stack(
@@ -127,14 +127,14 @@ class WaterTrackerWidget extends StatelessWidget {
                               style: GoogleFonts.outfit(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
-                                color: progress > 0.5 ? Colors.white : const Color(0xFF1F2937),
+                                color: progress > 0.5 ? Colors.white : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
                             Text(
                               'ml',
                               style: GoogleFonts.outfit(
                                 fontSize: 14,
-                                color: progress > 0.5 ? Colors.white70 : const Color(0xFF6B7280),
+                                color: progress > 0.5 ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -193,7 +193,7 @@ class WaterTrackerWidget extends StatelessWidget {
                 label,
                 style: GoogleFonts.outfit(
                   fontSize: 10,
-                  color: const Color(0xFF6B7280),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
