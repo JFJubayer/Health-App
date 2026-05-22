@@ -1,10 +1,64 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
 import '../models/gamification_model.dart';
+import '../models/ingredient_entity.dart';
+import '../models/meal_template_entity.dart';
+import '../models/day_plan_entity.dart';
 
 class PersistenceService {
+  static Box<IngredientEntity>? _ingredientsBox;
+  static Box<MealTemplateEntity>? _templatesBox;
+  static Box<DayPlanEntity>? _dayPlansBox;
+
+  static Future<void> initHive() async {
+    _ingredientsBox = await Hive.openBox<IngredientEntity>('ingredients');
+    _templatesBox = await Hive.openBox<MealTemplateEntity>('meal_templates');
+    _dayPlansBox = await Hive.openBox<DayPlanEntity>('day_plans');
+  }
+
+  static Future<void> saveDayPlan(DayPlanEntity plan) async {
+    await _dayPlansBox?.put(plan.id, plan);
+  }
+
+  static DayPlanEntity? getDayPlan(String id) {
+    return _dayPlansBox?.get(id);
+  }
+
+  static Future<void> saveMealTemplate(MealTemplateEntity template) async {
+    await _templatesBox?.put(template.id, template);
+  }
+
+  static List<MealTemplateEntity> getAllTemplates() {
+    return _templatesBox?.values.toList() ?? [];
+  }
+
+  static Future<void> saveIngredient(IngredientEntity ingredient) async {
+    await _ingredientsBox?.put(ingredient.id, ingredient);
+  }
+
+  static List<IngredientEntity> getAllIngredients() {
+    return _ingredientsBox?.values.toList() ?? [];
+  }
+
+  static Future<void> saveAllIngredients(List<IngredientEntity> ingredients) async {
+    final Map<String, IngredientEntity> map = {};
+    for (var i in ingredients) {
+      map[i.id] = i;
+    }
+    await _ingredientsBox?.putAll(map);
+  }
+
+  static Future<void> saveAllTemplates(List<MealTemplateEntity> templates) async {
+    final Map<String, MealTemplateEntity> map = {};
+    for (var t in templates) {
+      map[t.id] = t;
+    }
+    await _templatesBox?.putAll(map);
+  }
+
   static const String _keyUser = 'user_data';
   static const String _keyMeals = 'meal_plan';
 

@@ -1,4 +1,18 @@
-enum MealType { breakfast, lunch, dinner }
+import 'package:hive/hive.dart';
+
+part 'meal_model.g.dart';
+
+@HiveType(typeId: 4)
+enum MealType {
+  @HiveField(0)
+  breakfast,
+  
+  @HiveField(1)
+  lunch,
+  
+  @HiveField(2)
+  dinner
+}
 
 class MealModel {
   final String id;

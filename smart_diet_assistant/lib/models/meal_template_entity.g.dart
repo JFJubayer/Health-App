@@ -1,0 +1,114 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'meal_template_entity.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
+class IngredientPortionAdapter extends TypeAdapter<IngredientPortion> {
+  @override
+  final int typeId = 3;
+
+  @override
+  IngredientPortion read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return IngredientPortion(
+      ingredientId: fields[0] as String,
+      grams: fields[1] as double,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, IngredientPortion obj) {
+    writer
+      ..writeByte(2)
+      ..writeByte(0)
+      ..write(obj.ingredientId)
+      ..writeByte(1)
+      ..write(obj.grams);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is IngredientPortionAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class MealTemplateEntityAdapter extends TypeAdapter<MealTemplateEntity> {
+  @override
+  final int typeId = 1;
+
+  @override
+  MealTemplateEntity read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return MealTemplateEntity(
+      id: fields[0] as String,
+      name: fields[1] as String,
+      type: fields[2] as MealType,
+      ingredients: (fields[3] as List).cast<IngredientPortion>(),
+      tags: (fields[4] as List).cast<String>(),
+      conditions: (fields[5] as List).cast<String>(),
+      prepTimeMinutes: fields[6] as int,
+      rating: fields[7] as double,
+      timesUsed: fields[8] as int,
+      isCustom: fields[9] as bool,
+      recipeSteps: (fields[10] as List).cast<String>(),
+      instructions: fields[11] as String,
+      imageUrl: fields[12] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, MealTemplateEntity obj) {
+    writer
+      ..writeByte(13)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.type)
+      ..writeByte(3)
+      ..write(obj.ingredients)
+      ..writeByte(4)
+      ..write(obj.tags)
+      ..writeByte(5)
+      ..write(obj.conditions)
+      ..writeByte(6)
+      ..write(obj.prepTimeMinutes)
+      ..writeByte(7)
+      ..write(obj.rating)
+      ..writeByte(8)
+      ..write(obj.timesUsed)
+      ..writeByte(9)
+      ..write(obj.isCustom)
+      ..writeByte(10)
+      ..write(obj.recipeSteps)
+      ..writeByte(11)
+      ..write(obj.instructions)
+      ..writeByte(12)
+      ..write(obj.imageUrl);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MealTemplateEntityAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}

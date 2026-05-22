@@ -4,11 +4,29 @@ import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/input_screen.dart';
 import 'screens/main_navigation.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'utils/app_theme.dart';
 
 
-void main() {
+import 'package:hive_flutter/hive_flutter.dart';
+import 'models/ingredient_entity.dart';
+import 'models/meal_template_entity.dart';
+import 'models/day_plan_entity.dart';
+import 'models/meal_model.dart';
+import 'services/persistence_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Hive.initFlutter();
+  
+  Hive.registerAdapter(IngredientEntityAdapter());
+  Hive.registerAdapter(MealTemplateEntityAdapter());
+  Hive.registerAdapter(IngredientPortionAdapter());
+  Hive.registerAdapter(DayPlanEntityAdapter());
+  Hive.registerAdapter(MealTypeAdapter());
+
+  await PersistenceService.initHive();
+
   runApp(
     MultiProvider(
       providers: [

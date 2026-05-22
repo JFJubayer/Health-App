@@ -1,5 +1,9 @@
 import '../models/meal_model.dart';
-import 'dart:math';
+import '../models/ingredient_entity.dart';
+import '../models/meal_template_entity.dart';
+import '../models/day_plan_entity.dart';
+import 'persistence_service.dart';
+import 'meal_selector_service.dart';
 
 class DietService {
   static String getCalorieTier(double tdee) {
@@ -8,225 +12,223 @@ class DietService {
     return 'High Calorie Plan';
   }
 
-  static List<MealModel> generateMealPlan(String tier, {List<String> conditions = const []}) {
-    bool isDiabetic = conditions.contains('Diabetes');
-    bool hasHypertension = conditions.contains('Hypertension');
+  static Future<void> seedDataIfNeeded() async {
+    final ingredients = PersistenceService.getAllIngredients();
+    if (ingredients.isEmpty) {
+      await _seedIngredients();
+    }
     
-    if (tier == 'Low Calorie Plan') {
-      return [
-        _createMeal(
-          id: 'l_br_1',
-          name: isDiabetic ? 'Steel-Cut Oats with Berries' : 'Egg & Whole Wheat Roti',
-          calories: 350,
-          type: MealType.breakfast,
-          protein: 15, carbs: 45, fat: 8,
-          ingredients: isDiabetic ? ['Oats', 'Blueberries', 'Skim Milk'] : ['1 Egg', '2 Roti', 'Vegetable fry'],
-          recipeSteps: [
-            'Rinse the grains thoroughly.',
-            'Boil with skim milk on low heat.',
-            'Add fresh blueberries on top once cooked.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?q=80&w=500',
-          instructions: 'Prepare oats with milk and top with berries. For egg, scramble with minimal oil.',
-        ),
-        _createMeal(
-          id: 'l_lu_1',
-          name: 'Grilled Fish with Steamed Veggies',
-          calories: 500,
-          type: MealType.lunch,
-          protein: 35, carbs: 40, fat: 12,
-          ingredients: ['150g Rui Fish', 'Broccoli', 'Carrots', hasHypertension ? 'Lemon' : 'Salt/Pepper'],
-          recipeSteps: [
-            'Marinate fish with lemon and spices.',
-            'Grill for 5-7 minutes each side.',
-            'Steam veggies separately for 4 minutes.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=500',
-          instructions: 'Grill fish with lemon and spices. Steam vegetables until tender.',
-        ),
-        _createMeal(
-          id: 'l_di_1',
-          name: 'Clear Vegetable Soup with Chicken',
-          calories: 350,
-          type: MealType.dinner,
-          protein: 25, carbs: 20, fat: 10,
-          ingredients: ['Chicken Breast', 'Papaya', 'Cabbage', 'Ginger'],
-          recipeSteps: [
-            'Boil chicken until tender.',
-            'Add sliced cabbage and papaya.',
-            'Season with ginger and garlic, simmer for 10 mins.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=500',
-          instructions: 'Boil chicken and veggies together. Season with ginger and garlic.',
-        ),
-      ];
-    } else if (tier == 'Moderate Calorie Plan') {
-      return [
-        _createMeal(
-          id: 'm_br_1',
-          name: 'Peanut Butter Toast & Eggs',
-          calories: 450,
-          type: MealType.breakfast,
-          protein: 20, carbs: 55, fat: 15,
-          ingredients: ['2 slices Brown Bread', 'PB', '2 Boiled Eggs'],
-          recipeSteps: [
-            'Toast the brown bread.',
-            'Spread peanut butter evenly.',
-            'Serve with boiled eggs on the side.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=500',
-          instructions: 'Toast bread, spread peanut butter. Enjoy with boiled eggs.',
-        ),
-        _createMeal(
-          id: 'm_lu_1',
-          name: isDiabetic ? 'Brown Rice with Chicken Curry' : 'White Rice with Chicken Curry',
-          calories: 750,
-          type: MealType.lunch,
-          protein: 40, carbs: 90, fat: 20,
-          ingredients: [isDiabetic ? '1.5 cups Brown Rice' : '1.5 cups Rice', 'Chicken', 'Lentils', 'Spinach'],
-          recipeSteps: [
-            'Prepare the rice according to package.',
-            'Sauté chicken with lentils and spices.',
-            'Wiltered spinach into the curry at the end.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=500',
-          instructions: 'Cook rice. Prepare chicken curry with moderate oil and spices.',
-        ),
-        _createMeal(
-          id: 'm_di_1',
-          name: 'Grilled Chicken Salad & Roti',
-          calories: 600,
-          type: MealType.dinner,
-          protein: 35, carbs: 60, fat: 18,
-          ingredients: ['Chicken', 'Mixed Greens', '1 Roti', 'Olive Oil dressing'],
-          recipeSteps: [
-            'Grill chicken breast until charred.',
-            'Toss fresh greens in olive oil.',
-            'Serve with warm whole wheat roti.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500',
-          instructions: 'Grill chicken. Toss greens with dressing. Serve with warm roti.',
-        ),
-      ];
-    } else {
-      return [
-        _createMeal(
-          id: 'h_br_1',
-          name: 'Omelet, Toast & Fruit Platter',
-          calories: 600,
-          type: MealType.breakfast,
-          protein: 25, carbs: 75, fat: 22,
-          ingredients: ['3 Eggs', '2 Bread', 'Banana', 'Apple'],
-          recipeSteps: [
-            'Whisk eggs with a splash of milk.',
-            'Cook omelet with desired veggies.',
-            'Slice fruits and serve with toast.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=500',
-          instructions: 'Make a 3-egg omelet with veggies. Serve with bread and fruits.',
-        ),
-        _createMeal(
-          id: 'h_lu_1',
-          name: 'Beef Stew with Rice & Dal',
-          calories: 1000,
-          type: MealType.lunch,
-          protein: 50, carbs: 120, fat: 35,
-          ingredients: ['Beef', '2.5 cups Rice', 'Thick Dal', 'Potatoes'],
-          recipeSteps: [
-            'Slow-cook beef with spices and potatoes.',
-            'Prepare thick dal separately.',
-            'Serve over a large portion of rice.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=500',
-          instructions: 'Slow-cook beef with spices. Serve with rice and thick lentils.',
-        ),
-        _createMeal(
-          id: 'h_di_1',
-          name: 'Fish Curry, Rice & Yogurt',
-          calories: 800,
-          type: MealType.dinner,
-          protein: 40, carbs: 100, fat: 25,
-          ingredients: ['Fish', '2 cups Rice', isDiabetic ? 'Plain Yogurt' : 'Sweet Yogurt'],
-          recipeSteps: [
-            'Cook fish in local spices and light gravy.',
-            'Steam rice until fluffy.',
-            'Serve with a chilled bowl of yogurt.'
-          ],
-          imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b52c67ad4?q=80&w=500',
-          instructions: 'Cook fish in local spices. Serve with steamed rice and yogurt.',
-        ),
-      ];
+    final templates = PersistenceService.getAllTemplates();
+    if (templates.isEmpty) {
+      await _seedTemplates();
     }
   }
 
-  static MealModel getAlternativeMeal(MealType type, String tier, List<String> conditions, MealModel currentMeal) {
-    bool isDiabetic = conditions.contains('Diabetes');
-    
-    if (type == MealType.breakfast) {
-      return _createMeal(
-        id: 'alt_br_${Random().nextInt(100)}',
-        name: isDiabetic ? 'Greek Yogurt with Nuts' : 'Banana Pancakes',
-        calories: currentMeal.calories,
-        type: type,
-        protein: 20, carbs: 40, fat: 12,
-        ingredients: ['Yogurt/Pancake Mix', 'Almonds', 'Honey/No-Sugar Syrup'],
-        recipeSteps: ['Mix base ingredients.', 'Cook or top as directed.', 'Serve immediately.'],
-        imageUrl: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=500',
-        instructions: 'Mix ingredients and serve fresh.',
-      );
-    } else if (type == MealType.lunch) {
-      return _createMeal(
-        id: 'alt_lu_${Random().nextInt(100)}',
-        name: 'Quinoa & Chickpea Bowl',
-        calories: currentMeal.calories,
-        type: type,
-        protein: 25, carbs: 70, fat: 15,
-        ingredients: ['Quinoa', 'Chickpeas', 'Cucumber', 'Tahini'],
-        recipeSteps: ['Boil quinoa.', 'Add chickpeas and chopped cucumber.', 'Drizzle tahini on top.'],
-        imageUrl: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?q=80&w=500',
-        instructions: 'Boil quinoa. Mix with chickpeas and veggies.',
-      );
-    } else {
-      return _createMeal(
-        id: 'alt_di_${Random().nextInt(100)}',
-        name: 'Stir-fry Tofu & Mixed Veggies',
-        calories: currentMeal.calories,
-        type: type,
-        protein: 30, carbs: 30, fat: 20,
-        ingredients: ['Tofu', 'Bell Peppers', 'Soy Sauce', 'Sesame Oil'],
-        recipeSteps: ['Press and sauté tofu.', 'Add sliced bell peppers.', 'Stir in soy sauce and oil.'],
-        imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=500',
-        instructions: 'Sauté tofu until golden. Add veggies and sauce.',
-      );
+  static Future<DayPlanEntity> generateDayPlan(double tdee, List<String> conditions, {List<String> recentMealIds = const []}) async {
+    await seedDataIfNeeded();
+
+    final allTemplates = PersistenceService.getAllTemplates();
+    final ingredientsList = PersistenceService.getAllIngredients();
+    final Map<String, IngredientEntity> ingredientsMap = {};
+    for (var i in ingredientsList) {
+      ingredientsMap[i.id] = i;
     }
+
+    final selector = MealSelectorService(allMeals: allTemplates, ingredients: ingredientsMap);
+
+    // Targets for meals
+    double breakfastTarget = tdee * 0.3;
+    double lunchTarget = tdee * 0.4;
+    double dinnerTarget = tdee * 0.3;
+
+    // Standard macros
+    final macros = MacroTargets(proteinGrams: (tdee * 0.3) / 4, carbsGrams: (tdee * 0.4) / 4, fatGrams: (tdee * 0.3) / 9);
+
+    final breakfasts = selector.selectMeals(targetCalories: breakfastTarget, macros: macros, conditions: conditions, recentMealIds: recentMealIds, type: MealType.breakfast);
+    final lunches = selector.selectMeals(targetCalories: lunchTarget, macros: macros, conditions: conditions, recentMealIds: recentMealIds, type: MealType.lunch);
+    final dinners = selector.selectMeals(targetCalories: dinnerTarget, macros: macros, conditions: conditions, recentMealIds: recentMealIds, type: MealType.dinner);
+
+    final dateStr = DateTime.now().toIso8601String().substring(0, 10);
+    final dayPlan = DayPlanEntity(
+      id: dateStr,
+      date: DateTime.now(),
+      breakfastId: breakfasts.isNotEmpty ? breakfasts.first.id : null,
+      lunchId: lunches.isNotEmpty ? lunches.first.id : null,
+      dinnerId: dinners.isNotEmpty ? dinners.first.id : null,
+      isLocked: false,
+    );
+
+    await PersistenceService.saveDayPlan(dayPlan);
+    return dayPlan;
   }
 
-  static MealModel _createMeal({
-    required String id,
-    required String name,
-    required int calories,
-    required MealType type,
-    double protein = 0,
-    double carbs = 0,
-    double fat = 0,
-    List<String> ingredients = const [],
-    String instructions = '',
-    List<String> recipeSteps = const [],
-    String? imageUrl,
-  }) {
+  static MealModel resolveMealModel(MealTemplateEntity template) {
+    final ingredientsList = PersistenceService.getAllIngredients();
+    final Map<String, IngredientEntity> ingredientsMap = {};
+    for (var i in ingredientsList) {
+      ingredientsMap[i.id] = i;
+    }
+
+    double calories = 0;
+    double protein = 0;
+    double carbs = 0;
+    double fat = 0;
+    List<String> ingredientNames = [];
+
+    for (var portion in template.ingredients) {
+      final ingredient = ingredientsMap[portion.ingredientId];
+      if (ingredient != null) {
+        final factor = portion.grams / 100.0;
+        calories += ingredient.caloriesPer100g * factor;
+        protein += ingredient.protein * factor;
+        carbs += ingredient.carbs * factor;
+        fat += ingredient.fat * factor;
+        ingredientNames.add('${portion.grams}g ${ingredient.name}');
+      }
+    }
+
     return MealModel(
-      id: id,
-      name: name,
-      calories: calories,
-      type: type,
+      id: template.id,
+      name: template.name,
+      type: template.type,
+      calories: calories.toInt(),
       protein: protein,
       carbs: carbs,
       fat: fat,
-      ingredients: ingredients,
-      instructions: instructions,
-      recipeSteps: recipeSteps,
-      imageUrl: imageUrl,
+      ingredients: ingredientNames,
+      recipeSteps: template.recipeSteps,
+      instructions: template.instructions,
+      imageUrl: template.imageUrl,
     );
   }
-}
 
+  static Future<void> _seedIngredients() async {
+    final data = [
+      // Proteins
+      IngredientEntity(id: 'i1', name: 'Chicken Breast', caloriesPer100g: 165, protein: 31, carbs: 0, fat: 3.6, tags: ['high-protein']),
+      IngredientEntity(id: 'i5', name: 'Egg', caloriesPer100g: 155, protein: 13, carbs: 1.1, fat: 11, tags: ['high-protein']),
+      IngredientEntity(id: 'i9', name: 'Rui Fish', caloriesPer100g: 110, protein: 19, carbs: 0, fat: 3.5, tags: ['high-protein', 'omega-3']),
+      IngredientEntity(id: 'i10', name: 'Beef (Lean)', caloriesPer100g: 250, protein: 26, carbs: 0, fat: 15, tags: ['high-protein']),
+      IngredientEntity(id: 'i11', name: 'Tofu', caloriesPer100g: 76, protein: 8, carbs: 1.9, fat: 4.8, tags: ['vegetarian', 'high-protein']),
+      IngredientEntity(id: 'i12', name: 'Prawns', caloriesPer100g: 99, protein: 24, carbs: 0.2, fat: 0.3, tags: ['high-protein', 'low-fat']),
+      IngredientEntity(id: 'i13', name: 'Lentils (Dal)', caloriesPer100g: 116, protein: 9, carbs: 20, fat: 0.4, tags: ['vegetarian', 'high-protein']),
+      // Carbs
+      IngredientEntity(id: 'i2', name: 'Brown Rice', caloriesPer100g: 110, protein: 2.6, carbs: 23, fat: 0.9, tags: ['complex-carbs', 'diabetic-safe']),
+      IngredientEntity(id: 'i6', name: 'Oats', caloriesPer100g: 389, protein: 17, carbs: 66, fat: 7, tags: ['complex-carbs', 'diabetic-safe']),
+      IngredientEntity(id: 'i14', name: 'White Rice', caloriesPer100g: 130, protein: 2.7, carbs: 28, fat: 0.3, tags: ['carbs']),
+      IngredientEntity(id: 'i15', name: 'Whole Wheat Roti', caloriesPer100g: 264, protein: 9, carbs: 55, fat: 0.9, tags: ['complex-carbs']),
+      IngredientEntity(id: 'i16', name: 'Quinoa', caloriesPer100g: 120, protein: 4.4, carbs: 21, fat: 1.9, tags: ['complex-carbs', 'gluten-free']),
+      IngredientEntity(id: 'i17', name: 'Banana', caloriesPer100g: 89, protein: 1.1, carbs: 23, fat: 0.3, tags: ['fruit']),
+      // Fats & Dairy
+      IngredientEntity(id: 'i3', name: 'Olive Oil', caloriesPer100g: 884, protein: 0, carbs: 0, fat: 100, tags: ['healthy-fats']),
+      IngredientEntity(id: 'i7', name: 'Almonds', caloriesPer100g: 579, protein: 21, carbs: 22, fat: 50, tags: ['healthy-fats', 'snack']),
+      IngredientEntity(id: 'i8', name: 'Greek Yogurt', caloriesPer100g: 59, protein: 10, carbs: 3.6, fat: 0.4, tags: ['high-protein', 'dairy']),
+      IngredientEntity(id: 'i18', name: 'Peanut Butter', caloriesPer100g: 588, protein: 25, carbs: 20, fat: 50, tags: ['healthy-fats']),
+      // Vegetables
+      IngredientEntity(id: 'i4', name: 'Broccoli', caloriesPer100g: 34, protein: 2.8, carbs: 7, fat: 0.4, tags: ['veg', 'low-cal']),
+      IngredientEntity(id: 'i19', name: 'Spinach', caloriesPer100g: 23, protein: 2.9, carbs: 3.6, fat: 0.4, tags: ['veg', 'iron-rich']),
+      IngredientEntity(id: 'i20', name: 'Bell Peppers', caloriesPer100g: 31, protein: 1, carbs: 6, fat: 0.3, tags: ['veg', 'vitamin-c']),
+      IngredientEntity(id: 'i21', name: 'Chickpeas', caloriesPer100g: 164, protein: 8.9, carbs: 27, fat: 2.6, tags: ['vegetarian', 'high-fiber']),
+    ];
+    await PersistenceService.saveAllIngredients(data);
+  }
+
+  static Future<void> _seedTemplates() async {
+    final data = [
+      // ─── BREAKFASTS ─────────────────────────────────────
+      MealTemplateEntity(id: 't_br_1', name: 'Oatmeal & Almonds', type: MealType.breakfast,
+        ingredients: [IngredientPortion(ingredientId: 'i6', grams: 50), IngredientPortion(ingredientId: 'i7', grams: 20)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 10,
+        recipeSteps: ['Boil oats in water.', 'Top with crushed almonds.'],
+        instructions: 'Mix and serve warm.',
+        imageUrl: 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?q=80&w=500'),
+      MealTemplateEntity(id: 't_br_2', name: 'Boiled Eggs & Yogurt', type: MealType.breakfast,
+        ingredients: [IngredientPortion(ingredientId: 'i5', grams: 100), IngredientPortion(ingredientId: 'i8', grams: 150)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 12,
+        recipeSteps: ['Boil eggs for 8 minutes.', 'Serve with a bowl of greek yogurt.'],
+        instructions: 'Simple high protein breakfast.',
+        imageUrl: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?q=80&w=500'),
+      MealTemplateEntity(id: 't_br_3', name: 'Banana Peanut Butter Toast', type: MealType.breakfast,
+        ingredients: [IngredientPortion(ingredientId: 'i17', grams: 120), IngredientPortion(ingredientId: 'i18', grams: 30), IngredientPortion(ingredientId: 'i15', grams: 50)],
+        conditions: ['Hypertension'], prepTimeMinutes: 5,
+        recipeSteps: ['Toast roti until crispy.', 'Spread peanut butter.', 'Slice banana on top.'],
+        instructions: 'Quick energy-dense breakfast.',
+        imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=500'),
+      MealTemplateEntity(id: 't_br_4', name: 'Egg Spinach Scramble', type: MealType.breakfast,
+        ingredients: [IngredientPortion(ingredientId: 'i5', grams: 150), IngredientPortion(ingredientId: 'i19', grams: 80), IngredientPortion(ingredientId: 'i3', grams: 5)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 8,
+        recipeSteps: ['Saute spinach in olive oil.', 'Scramble eggs into the pan.', 'Season and serve.'],
+        instructions: 'Iron-rich, high protein start.',
+        imageUrl: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=500'),
+
+      // ─── LUNCHES ────────────────────────────────────────
+      MealTemplateEntity(id: 't_lu_1', name: 'Grilled Chicken & Brown Rice', type: MealType.lunch,
+        ingredients: [IngredientPortion(ingredientId: 'i1', grams: 150), IngredientPortion(ingredientId: 'i2', grams: 200), IngredientPortion(ingredientId: 'i3', grams: 10)],
+        conditions: ['Hypertension', 'Diabetes'], prepTimeMinutes: 25,
+        recipeSteps: ['Grill chicken with olive oil.', 'Serve with steamed brown rice.'],
+        instructions: 'Classic healthy lunch.',
+        imageUrl: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=500'),
+      MealTemplateEntity(id: 't_lu_2', name: 'Fish Curry & Rice', type: MealType.lunch,
+        ingredients: [IngredientPortion(ingredientId: 'i9', grams: 150), IngredientPortion(ingredientId: 'i14', grams: 250), IngredientPortion(ingredientId: 'i3', grams: 10)],
+        conditions: ['Hypertension'], prepTimeMinutes: 30,
+        recipeSteps: ['Cook fish in local spices.', 'Serve with steamed rice.'],
+        instructions: 'Rich omega-3 lunch.',
+        imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b52c67ad4?q=80&w=500'),
+      MealTemplateEntity(id: 't_lu_3', name: 'Quinoa Chickpea Bowl', type: MealType.lunch,
+        ingredients: [IngredientPortion(ingredientId: 'i16', grams: 150), IngredientPortion(ingredientId: 'i21', grams: 100), IngredientPortion(ingredientId: 'i20', grams: 80), IngredientPortion(ingredientId: 'i3', grams: 10)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 20,
+        recipeSteps: ['Boil quinoa.', 'Mix with chickpeas and diced bell peppers.', 'Drizzle olive oil.'],
+        instructions: 'Vegetarian, fiber-rich, and filling.',
+        imageUrl: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?q=80&w=500'),
+      MealTemplateEntity(id: 't_lu_4', name: 'Beef Lentil Stew', type: MealType.lunch,
+        ingredients: [IngredientPortion(ingredientId: 'i10', grams: 150), IngredientPortion(ingredientId: 'i13', grams: 100), IngredientPortion(ingredientId: 'i2', grams: 200)],
+        conditions: ['Diabetes'], prepTimeMinutes: 40,
+        recipeSteps: ['Slow-cook beef with lentils and spices.', 'Serve over brown rice.'],
+        instructions: 'Hearty, high-calorie lunch.',
+        imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=500'),
+
+      // ─── DINNERS ────────────────────────────────────────
+      MealTemplateEntity(id: 't_di_1', name: 'Chicken Broccoli Stir-Fry', type: MealType.dinner,
+        ingredients: [IngredientPortion(ingredientId: 'i1', grams: 150), IngredientPortion(ingredientId: 'i4', grams: 200), IngredientPortion(ingredientId: 'i3', grams: 10)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 15,
+        recipeSteps: ['Saute chicken in olive oil.', 'Add broccoli and stir fry 5 min.'],
+        instructions: 'Low carb, high protein dinner.',
+        imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500'),
+      MealTemplateEntity(id: 't_di_2', name: 'Tofu Bell Pepper Stir-Fry', type: MealType.dinner,
+        ingredients: [IngredientPortion(ingredientId: 'i11', grams: 200), IngredientPortion(ingredientId: 'i20', grams: 150), IngredientPortion(ingredientId: 'i3', grams: 10)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 15,
+        recipeSteps: ['Press and cube tofu.', 'Saute with sliced bell peppers.', 'Season with soy sauce.'],
+        instructions: 'Plant-based, low calorie dinner.',
+        imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=500'),
+      MealTemplateEntity(id: 't_di_3', name: 'Prawn Spinach with Roti', type: MealType.dinner,
+        ingredients: [IngredientPortion(ingredientId: 'i12', grams: 150), IngredientPortion(ingredientId: 'i19', grams: 100), IngredientPortion(ingredientId: 'i15', grams: 80)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 20,
+        recipeSteps: ['Saute prawns with garlic.', 'Wilt spinach into the pan.', 'Serve with warm roti.'],
+        instructions: 'Lean protein with iron-rich greens.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=500'),
+      MealTemplateEntity(id: 't_di_4', name: 'Chicken Salad & Yogurt', type: MealType.dinner,
+        ingredients: [IngredientPortion(ingredientId: 'i1', grams: 120), IngredientPortion(ingredientId: 'i19', grams: 80), IngredientPortion(ingredientId: 'i8', grams: 100), IngredientPortion(ingredientId: 'i3', grams: 5)],
+        conditions: ['Diabetes', 'Hypertension'], prepTimeMinutes: 10,
+        recipeSteps: ['Grill chicken and slice.', 'Toss with spinach.', 'Serve with a side of yogurt.'],
+        instructions: 'Light, refreshing, and protein-packed.',
+        imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=500'),
+    ];
+    await PersistenceService.saveAllTemplates(data);
+  }
+
+
+
+  static Future<MealTemplateEntity> getAlternativeMeal(MealType type, double targetCalories, List<String> conditions, String currentMealId) async {
+    final allTemplates = PersistenceService.getAllTemplates();
+    final ingredientsList = PersistenceService.getAllIngredients();
+    final Map<String, IngredientEntity> ingredientsMap = {};
+    for (var i in ingredientsList) {
+      ingredientsMap[i.id] = i;
+    }
+    final selector = MealSelectorService(allMeals: allTemplates, ingredients: ingredientsMap);
+    final macros = MacroTargets(proteinGrams: 50, carbsGrams: 50, fatGrams: 20); // Base macro for alternative
+    final options = selector.selectMeals(targetCalories: targetCalories, macros: macros, conditions: conditions, recentMealIds: [currentMealId], type: type);
+    
+    return options.firstWhere((m) => m.id != currentMealId, orElse: () => options.isNotEmpty ? options.first : allTemplates.firstWhere((t) => t.type == type));
+  }
+}

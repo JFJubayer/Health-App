@@ -24,6 +24,7 @@ class DashboardScreen extends StatelessWidget {
 
     final totalTarget = userProvider.tdee;
     final consumed = userProvider.totalConsumedCalories.toDouble();
+    // ignore: unused_local_variable
     final remaining = (totalTarget - consumed).clamp(0.0, totalTarget);
     final progress = (consumed / totalTarget).clamp(0.0, 1.0);
 

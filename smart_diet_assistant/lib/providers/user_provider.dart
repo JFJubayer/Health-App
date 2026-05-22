@@ -6,6 +6,8 @@ import '../services/diet_service.dart';
 import '../services/persistence_service.dart';
 import '../services/notification_service.dart';
 import '../models/gamification_model.dart';
+import '../models/day_plan_entity.dart';
+import '../models/meal_template_entity.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -22,6 +24,7 @@ class UserProvider with ChangeNotifier {
   DateTime? _fastingStartTime;
   int _fastingReminderOffset = 0;
 
+  DayPlanEntity? _currentDayPlan;
   GamificationModel _gamification = GamificationModel();
 
   UserModel? get user => _user;
@@ -57,6 +60,30 @@ class UserProvider with ChangeNotifier {
     _initialLoad();
   }
 
+  void _buildMealPlanFromDayPlan() {
+    if (_currentDayPlan == null) return;
+    
+    _mealPlan.clear();
+    final allTemplates = PersistenceService.getAllTemplates();
+    final Map<String, MealTemplateEntity> templateMap = {
+      for (var t in allTemplates) t.id: t
+    };
+
+    void addMeal(String? id) {
+      if (id != null && templateMap.containsKey(id)) {
+        final meal = DietService.resolveMealModel(templateMap[id]!);
+        meal.isConsumed = _currentDayPlan!.consumedSlots[id] ?? false;
+        _mealPlan.add(meal);
+      }
+    }
+
+    addMeal(_currentDayPlan!.breakfastId);
+    addMeal(_currentDayPlan!.lunchId);
+    addMeal(_currentDayPlan!.dinnerId);
+    
+    notifyListeners();
+  }
+
   Future<void> _initialLoad() async {
     try {
       debugPrint('UserProvider: Starting initial load...');
@@ -69,7 +96,13 @@ class UserProvider with ChangeNotifier {
         _calorieTier = DietService.getCalorieTier(_tdee);
         
         debugPrint('UserProvider: Loading meals...');
-        _mealPlan = await PersistenceService.getMeals() ?? [];
+        await DietService.seedDataIfNeeded();
+        final nowStr = DateTime.now().toIso8601String().substring(0, 10);
+        _currentDayPlan = PersistenceService.getDayPlan(nowStr);
+        if (_currentDayPlan == null) {
+           _currentDayPlan = await DietService.generateDayPlan(_tdee, _user!.conditions);
+        }
+        _buildMealPlanFromDayPlan();
         
         debugPrint('UserProvider: Loading water data...');
         _waterIntake = await PersistenceService.getWaterIntake();
@@ -158,10 +191,11 @@ class UserProvider with ChangeNotifier {
           _gamification.badges.add('Consistency King');
         }
         
-        for (var meal in _mealPlan) {
-          meal.isConsumed = false;
+        if (_currentDayPlan != null) {
+          _currentDayPlan!.consumedSlots.clear();
+          await PersistenceService.saveDayPlan(_currentDayPlan!);
+          _buildMealPlanFromDayPlan();
         }
-        PersistenceService.saveMeals(_mealPlan);
       }
     } else {
       _gamification.currentStreak = 1;
@@ -259,7 +293,8 @@ class UserProvider with ChangeNotifier {
     _bmr = HealthService.calculateBMR(user);
     _tdee = HealthService.calculateTDEE(_bmr);
     _calorieTier = DietService.getCalorieTier(_tdee);
-    _mealPlan = DietService.generateMealPlan(_calorieTier, conditions: user.conditions);
+    
+    _generateAndSetNewPlan();
     
     // Set default water goal
     _waterGoal = (user.weightKg * 35).toInt();
@@ -267,7 +302,6 @@ class UserProvider with ChangeNotifier {
     _checkedIngredients.clear();
     
     PersistenceService.saveUser(_user!);
-    PersistenceService.saveMeals(_mealPlan);
     PersistenceService.saveWaterGoal(_waterGoal);
     PersistenceService.saveWaterIntake(_waterIntake);
     PersistenceService.saveCheckedIngredients(_checkedIngredients);
@@ -276,46 +310,53 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
   
-  void regenerateMeals() {
-    _mealPlan = DietService.generateMealPlan(_calorieTier, conditions: _user?.conditions ?? []);
-    PersistenceService.saveMeals(_mealPlan);
-    notifyListeners();
+  Future<void> _generateAndSetNewPlan() async {
+    _currentDayPlan = await DietService.generateDayPlan(_tdee, _user!.conditions);
+    _buildMealPlanFromDayPlan();
+  }
+  
+  void regenerateMeals() async {
+    await _generateAndSetNewPlan();
   }
 
-  void replaceMeal(String mealId) {
-    int index = _mealPlan.indexWhere((m) => m.id == mealId);
-    if (index != -1) {
-      final currentMeal = _mealPlan[index];
-      _mealPlan[index] = DietService.getAlternativeMeal(
-        currentMeal.type, 
-        _calorieTier, 
-        _user?.conditions ?? [], 
-        currentMeal
-      );
-      PersistenceService.saveMeals(_mealPlan);
-      notifyListeners();
+  void replaceMeal(String mealId) async {
+    if (_currentDayPlan == null) return;
+    
+    final currentMeal = _mealPlan.firstWhere((m) => m.id == mealId, orElse: () => _mealPlan.first);
+    final altTemplate = await DietService.getAlternativeMeal(currentMeal.type, _tdee * 0.35, _user?.conditions ?? [], mealId);
+    
+    if (currentMeal.type == MealType.breakfast) {
+      _currentDayPlan!.breakfastId = altTemplate.id;
+    } else if (currentMeal.type == MealType.lunch) {
+      _currentDayPlan!.lunchId = altTemplate.id;
+    } else if (currentMeal.type == MealType.dinner) {
+      _currentDayPlan!.dinnerId = altTemplate.id;
     }
+    
+    await PersistenceService.saveDayPlan(_currentDayPlan!);
+    _buildMealPlanFromDayPlan();
   }
 
   void toggleMealConsumed(String mealId) {
-    int index = _mealPlan.indexWhere((m) => m.id == mealId);
-    if (index != -1) {
-      _mealPlan[index].isConsumed = !_mealPlan[index].isConsumed;
-      PersistenceService.saveMeals(_mealPlan);
+    if (_currentDayPlan != null) {
+      bool isConsumed = _currentDayPlan!.consumedSlots[mealId] ?? false;
+      _currentDayPlan!.consumedSlots[mealId] = !isConsumed;
+      PersistenceService.saveDayPlan(_currentDayPlan!);
+      
+      _buildMealPlanFromDayPlan();
       _saveCurrentDailySummary();
-      notifyListeners();
     }
   }
   
   void addCustomMeal(MealModel meal) {
     _mealPlan.add(meal);
-    PersistenceService.saveMeals(_mealPlan);
+    // Ideally this would save as a MealTemplate and be added to snackIds in _currentDayPlan
     notifyListeners();
   }
 
   void deleteMeal(String mealId) {
     _mealPlan.removeWhere((m) => m.id == mealId);
-    PersistenceService.saveMeals(_mealPlan);
+    // Ideally this would remove the id from the corresponding slot in _currentDayPlan
     notifyListeners();
   }
   
