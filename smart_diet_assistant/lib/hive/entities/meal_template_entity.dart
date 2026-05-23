@@ -1,21 +1,10 @@
 import 'package:hive/hive.dart';
-import 'meal_model.dart'; // For MealType
+import '../../models/meal_model.dart'; // For MealType
 
 part 'meal_template_entity.g.dart';
 
-@HiveType(typeId: 3)
-class IngredientPortion {
-  @HiveField(0)
-  String ingredientId;
+import 'ingredient_portion_entity.dart';
 
-  @HiveField(1)
-  double grams;
-
-  IngredientPortion({
-    required this.ingredientId,
-    required this.grams,
-  });
-}
 
 @HiveType(typeId: 1)
 class MealTemplateEntity {

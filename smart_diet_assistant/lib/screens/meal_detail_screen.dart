@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../hive/entities/meal_model.dart';
+import '../models/meal_model.dart';
 import '../providers/user_provider.dart';
 
 class MealDetailScreen extends StatelessWidget {

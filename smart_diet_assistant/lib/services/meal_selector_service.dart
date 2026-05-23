@@ -1,6 +1,6 @@
 import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/ingredient_entity.dart';
-import '../hive/entities/meal_model.dart'; 
+import '../models/meal_model.dart'; 
 
 class MacroTargets {
   final double proteinGrams;

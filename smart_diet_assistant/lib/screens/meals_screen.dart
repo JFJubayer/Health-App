@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
-import '../hive/entities/meal_model.dart';
+import '../models/meal_model.dart';
 import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 

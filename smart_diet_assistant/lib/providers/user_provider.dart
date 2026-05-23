@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../hive/entities/user_model.dart';
-import '../hive/entities/meal_model.dart';
+import '../models/user_model.dart';
+import '../models/meal_model.dart';
 import '../services/health_service.dart';
 import '../services/diet_service.dart';
 import '../services/persistence_service.dart';
 import '../services/notification_service.dart';
-import '../hive/entities/gamification_model.dart';
+import '../models/gamification_model.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 

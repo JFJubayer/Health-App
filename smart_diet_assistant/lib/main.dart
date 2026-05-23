@@ -11,7 +11,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'hive/entities/ingredient_entity.dart';
 import 'hive/entities/meal_template_entity.dart';
 import 'hive/entities/day_plan_entity.dart';
-import 'hive/entities/meal_model.dart';
+import 'models/meal_model.dart';
 import 'services/persistence_service.dart';
 
 void main() async {

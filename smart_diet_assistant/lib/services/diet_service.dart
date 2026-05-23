@@ -1,4 +1,4 @@
-import '../hive/entities/meal_model.dart';
+import '../models/meal_model.dart';
 import '../hive/entities/ingredient_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
