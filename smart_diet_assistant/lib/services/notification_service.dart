@@ -60,7 +60,7 @@ class NotificationService {
     );
 
     await _notificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
 
@@ -125,7 +125,7 @@ class NotificationService {
     
     // Cancel previous water reminders (IDs 1000 to 1024)
     for (int hour = activeRangeStart; hour < activeRangeEnd; hour += 3) {
-      await _notificationsPlugin.cancel(1000 + hour);
+      await _notificationsPlugin.cancel(id: 1000 + hour);
     }
     
     for (int hour = activeRangeStart; hour < activeRangeEnd; hour += 3) {
@@ -157,16 +157,15 @@ class NotificationService {
       );
 
       await _notificationsPlugin.zonedSchedule(
-        1000 + hour,
-        '💧 Stay Hydrated!',
-        'Did you drink water since $promptTime? You\'re a bit behind your goal.',
-        tz.TZDateTime.from(scheduledTime, tz.local),
-        const NotificationDetails(
+        id: 1000 + hour,
+        title: '💧 Stay Hydrated!',
+        body: 'Did you drink water since $promptTime? You\'re a bit behind your goal.',
+        scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
+        notificationDetails: const NotificationDetails(
           android: androidDetails,
           iOS: iosDetails,
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: expectedIntake.toString(),
       );
@@ -202,32 +201,32 @@ class NotificationService {
     }
 
     await _notificationsPlugin.zonedSchedule(
-      999, // Specific ID for fasting notifications
-      title,
-      body,
-      tz.TZDateTime.from(notificationTime, tz.local),
-      const NotificationDetails(
+      id: 999,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(notificationTime, tz.local),
+      notificationDetails: const NotificationDetails(
         android: androidDetails,
         iOS: iosDetails,
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
   static Future<void> cancelFastingNotifications() async {
     if (kIsWeb) return;
-    await _notificationsPlugin.cancel(999);
+    await _notificationsPlugin.cancel(id: 999);
   }
 
   static Future<void> showTestNotification() async {
     if (kIsWeb) {
       // Basic web notification if possible
       await _notificationsPlugin.show(
-        0,
-        '💧 Quick Hydration Check',
-        'Daily watering reminder testing!',
-        const NotificationDetails(),
+        id: 0,
+        title: '💧 Quick Hydration Check',
+        body: 'Daily watering reminder testing!',
+        notificationDetails: const NotificationDetails(),
       );
       return;
     }
@@ -249,10 +248,10 @@ class NotificationService {
     const platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
     
     await _notificationsPlugin.show(
-      0,
-      '💧 Quick Hydration Check',
-      'Did you drink water in the last hour? Log it quickly below!',
-      platformChannelSpecifics,
+      id: 0,
+      title: '💧 Quick Hydration Check',
+      body: 'Did you drink water in the last hour? Log it quickly below!',
+      notificationDetails: platformChannelSpecifics,
       payload: 'test',
     );
   }

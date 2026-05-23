@@ -1,9 +1,8 @@
 import 'package:hive/hive.dart';
 import '../../models/meal_model.dart'; // For MealType
-
+import 'ingredient_portion_entity.dart';
 part 'meal_template_entity.g.dart';
 
-import 'ingredient_portion_entity.dart';
 
 
 @HiveType(typeId: 1)

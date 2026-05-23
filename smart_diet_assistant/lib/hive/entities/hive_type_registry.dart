@@ -6,7 +6,7 @@ import 'ingredient_portion_entity.dart';
 import 'day_plan_entity.dart';
 import 'meal_memory_entity.dart';
 import 'user_meal_preference_entity.dart';
-import '../../models/meal_model.dart' show MealType;
+import '../../models/meal_model.dart';
 
 void registerHiveAdapters() {
   // Core entities

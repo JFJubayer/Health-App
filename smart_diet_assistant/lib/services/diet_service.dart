@@ -1,6 +1,7 @@
 import '../models/meal_model.dart';
 import '../hive/entities/ingredient_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
+import '../hive/entities/ingredient_portion_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
 import 'persistence_service.dart';
 import 'meal_selector_service.dart';

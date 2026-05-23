@@ -10,7 +10,10 @@ import 'utils/app_theme.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'hive/entities/ingredient_entity.dart';
 import 'hive/entities/meal_template_entity.dart';
+import 'hive/entities/ingredient_portion_entity.dart';
 import 'hive/entities/day_plan_entity.dart';
+import 'hive/entities/meal_memory_entity.dart';
+import 'hive/entities/user_meal_preference_entity.dart';
 import 'models/meal_model.dart';
 import 'services/persistence_service.dart';
 
