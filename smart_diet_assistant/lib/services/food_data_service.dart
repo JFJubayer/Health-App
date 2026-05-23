@@ -1,5 +1,5 @@
-import '../models/food_item_model.dart';
-import '../models/meal_model.dart';
+import '../hive/entities/food_item_model.dart';
+import '../hive/entities/meal_model.dart';
 
 class FoodDataService {
   static const List<FoodItemModel> _foodLibrary = [

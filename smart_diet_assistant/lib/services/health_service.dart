@@ -1,4 +1,4 @@
-import '../models/user_model.dart';
+import '../hive/entities/user_model.dart';
 
 class HealthService {
   /// Calculates BMR using the Mifflin-St Jeor Equation

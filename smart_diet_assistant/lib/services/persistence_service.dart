@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
-import '../models/user_model.dart';
-import '../models/meal_model.dart';
-import '../models/gamification_model.dart';
-import '../models/ingredient_entity.dart';
-import '../models/meal_template_entity.dart';
-import '../models/day_plan_entity.dart';
+import '../hive/entities/user_model.dart';
+import '../hive/entities/meal_model.dart';
+import '../hive/entities/gamification_model.dart';
+import '../hive/entities/ingredient_entity.dart';
+import '../hive/entities/meal_template_entity.dart';
+import '../hive/entities/day_plan_entity.dart';
 
 class PersistenceService {
   static Box<IngredientEntity>? _ingredientsBox;

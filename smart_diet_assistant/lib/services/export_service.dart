@@ -1,8 +1,8 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../models/user_model.dart';
-import '../models/meal_model.dart';
+import '../hive/entities/user_model.dart';
+import '../hive/entities/meal_model.dart';
 
 class ExportService {
   static Future<void> exportToPdf(UserModel user, List<MealModel> meals) async {

@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
-import '../models/user_model.dart';
+import '../hive/entities/user_model.dart';
 import 'input_screen.dart';
 import '../services/notification_service.dart';
 import '../services/health_service.dart';

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
-import '../models/user_model.dart';
+import '../hive/entities/user_model.dart';
 import 'main_navigation.dart';
 
 class InputScreen extends StatefulWidget {
