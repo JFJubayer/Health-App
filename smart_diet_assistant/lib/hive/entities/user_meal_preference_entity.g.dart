@@ -22,7 +22,7 @@ class UserMealPreferenceEntityAdapter
       favoriteMealIds: (fields[1] as List).cast<String>(),
       dislikedIngredientIds: (fields[2] as List).cast<String>(),
       dietaryRestrictions: (fields[3] as List).cast<String>(),
-      mealRatings: (fields[4] as Map).cast<String, int>(),
+      mealRatings: (fields[4] as Map).cast<String, double>(),
     );
   }
 

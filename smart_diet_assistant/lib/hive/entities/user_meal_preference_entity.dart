@@ -17,7 +17,7 @@ class UserMealPreferenceEntity {
   List<String> dietaryRestrictions;
 
   @HiveField(4)
-  Map<String, int> mealRatings; // mealId -> rating 0-5
+  Map<String, double> mealRatings; // mealId -> rating 0-5
 
   UserMealPreferenceEntity({
     required this.userId,

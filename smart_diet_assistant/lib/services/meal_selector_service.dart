@@ -1,6 +1,8 @@
 import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/ingredient_entity.dart';
 import '../models/meal_model.dart'; 
+import 'meal_memory_service.dart';
+import 'persistence_service.dart';
 
 class MacroTargets {
   final double proteinGrams;
@@ -26,14 +28,16 @@ class MealSelectorService {
   List<MealTemplateEntity> selectMeals({
     required double targetCalories,
     required MacroTargets macros,
-    required List<String> conditions,    
-    required List<String> recentMealIds, 
+    required List<String> conditions, 
     required MealType type,
   }) {
     var validMeals = allMeals
         .where((m) => m.type == type)
         .where((m) => _isSafeForConditions(m, conditions))
         .toList();
+
+    final recentMealIds =
+    MealMemoryService.getRecentlyConsumedMealIds(); 
 
     validMeals.sort((a, b) {
       final scoreA = _score(a, targetCalories, macros, recentMealIds);
@@ -98,11 +102,64 @@ class MealSelectorService {
     double macroFit = 1.0 - ((pDiff + cDiff + fDiff) / 2.0).clamp(0.0, 1.0);
 
     // Variety Bonus (Weight 0.2)
-    double varietyBonus = recentMealIds.contains(meal.id) ? 0.0 : 1.0;
+    double varietyScore = 1.0;
+
+    if (recentMealIds.contains(meal.id)) {
+      varietyScore = 0.2;
+    }
 
     // User Rating (Weight 0.1)
     double ratingScore = meal.rating / 5.0;
 
-    return (calorieFit * 0.4) + (macroFit * 0.3) + (varietyBonus * 0.2) + (ratingScore * 0.1);
+    double _frequencyPenalty(
+      MealTemplateEntity meal,
+    ) {
+      final memories =
+          MealMemoryService.getMealHistory();
+
+      int recentCount = memories
+          .where((m) => m.mealTemplateId == meal.id)
+          .length;
+
+      return (recentCount * 0.05)
+          .clamp(0.0, 0.3);
+    }
+
+    double _preferenceScore(
+      MealTemplateEntity meal,
+    ) {
+      final prefs =
+          PersistenceService.getPreferences(
+            MealMemoryService.localUserId,
+          );
+
+      if (prefs == null) {
+        return 0.5;
+      }
+
+      final rating =
+          prefs.mealRatings[meal.id];
+
+      if (rating == null) {
+        return 0.5;
+      }
+
+      return rating / 5.0;
+    }
+
+    final frequencyPenalty =
+      _frequencyPenalty(meal);
+
+    final preferenceScore =
+        _preferenceScore(meal);
+
+    final finalScore =
+        (calorieFit * 0.35) +
+        (macroFit * 0.25) +
+        (varietyScore * 0.20) +
+        (preferenceScore * 0.15) +
+        (ratingScore * 0.05);
+
+    return finalScore - frequencyPenalty;
   }
 }

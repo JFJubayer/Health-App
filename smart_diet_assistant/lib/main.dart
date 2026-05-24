@@ -12,11 +12,11 @@ import 'hive/entities/ingredient_entity.dart';
 import 'hive/entities/meal_template_entity.dart';
 import 'hive/entities/ingredient_portion_entity.dart';
 import 'hive/entities/day_plan_entity.dart';
-import 'hive/entities/meal_memory_entity.dart';
-import 'hive/entities/user_meal_preference_entity.dart';
+// import 'hive/entities/meal_memory_entity.dart';
+// import 'hive/entities/user_meal_preference_entity.dart';
 import 'models/meal_model.dart';
 import 'services/persistence_service.dart';
-
+import 'hive/seed/seed_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -29,7 +29,20 @@ void main() async {
   Hive.registerAdapter(MealTypeAdapter());
 
   await PersistenceService.initHive();
+  await SeedService.seedIfNeeded();
 
+final ingredients = PersistenceService.getAllIngredients();
+final ingredientIds = ingredients.map((e) => e.id).toSet();
+
+final templates = PersistenceService.getAllTemplates();
+
+for (final t in templates) {
+  for (final p in t.ingredients) {
+    if (!ingredientIds.contains(p.ingredientId)) {
+      print('BROKEN REFERENCE: ${t.name} -> ${p.ingredientId}');
+    }
+  }
+}
   runApp(
     MultiProvider(
       providers: [
