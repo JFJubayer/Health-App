@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
-import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
@@ -30,8 +29,6 @@ class DashboardScreen extends StatelessWidget {
     final consumed = userProvider.totalConsumedCalories.toDouble();
     // ignore: unused_local_variable
     final remaining = (totalTarget - consumed).clamp(0.0, totalTarget);
-    final progress = (consumed / totalTarget).clamp(0.0, 1.0);
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
@@ -59,6 +56,11 @@ class DashboardScreen extends StatelessWidget {
                     fatTarget: (totalTarget * 0.3) / 9,
                     mealsConsumed: userProvider.mealPlan.where((m) => m.isConsumed).length,
                   ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 12),
+                  _buildMetabolicSummary(context, userProvider)
+                      .animate()
+                      .fadeIn(delay: 100.ms)
+                      .slideY(begin: 0.05),
                   const SizedBox(height: 30),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
@@ -96,6 +98,36 @@ class DashboardScreen extends StatelessWidget {
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('Add Meal', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
       ).animate().scale(delay: 1000.ms).fadeIn(),
+    );
+  }
+
+  Widget _buildMetabolicSummary(BuildContext context, UserProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Chip(
+              label: Text(
+                provider.calorieTier,
+                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              side: BorderSide.none,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'BMR ${provider.bmr.toInt()} kcal · TDEE ${provider.tdee.toInt()} kcal',
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 
@@ -147,7 +179,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '${meal.calories} kcal • ${meal.type.name.capitalize()}',
+                    '${meal.calories} kcal • ${meal.type.name.capitalize()} • ${meal.prepTimeMinutes} min',
                     style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],

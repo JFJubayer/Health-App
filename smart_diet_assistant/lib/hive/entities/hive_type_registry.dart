@@ -9,14 +9,17 @@ import 'user_meal_preference_entity.dart';
 import '../../models/meal_model.dart';
 
 void registerHiveAdapters() {
-  // Core entities
-  Hive.registerAdapter(IngredientEntityAdapter());
-  Hive.registerAdapter(MealTemplateEntityAdapter());
-  Hive.registerAdapter(IngredientPortionAdapter());
-  Hive.registerAdapter(DayPlanEntityAdapter());
-  Hive.registerAdapter(MealMemoryEntityAdapter());
-  Hive.registerAdapter(UserMealPreferenceEntityAdapter());
+  void registerOnce<T>(TypeAdapter<T> adapter) {
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter(adapter);
+    }
+  }
 
-  // Existing enums/adapters from models
-  Hive.registerAdapter(MealTypeAdapter());
+  registerOnce(IngredientEntityAdapter());
+  registerOnce(MealTemplateEntityAdapter());
+  registerOnce(IngredientPortionAdapter());
+  registerOnce(DayPlanEntityAdapter());
+  registerOnce(MealMemoryEntityAdapter());
+  registerOnce(UserMealPreferenceEntityAdapter());
+  registerOnce(MealTypeAdapter());
 }

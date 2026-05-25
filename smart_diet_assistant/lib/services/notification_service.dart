@@ -17,6 +17,18 @@ class NotificationService {
   static const String fastingChannelDescription = 'Reminders for intermittent fasting windows.';
 
   static UserProvider? _userProvider;
+  static bool _timezoneReady = false;
+
+  static void _ensureTimezoneReady() {
+    if (_timezoneReady) return;
+    tz.initializeTimeZones();
+    try {
+      tz.setLocalLocation(tz.getLocation('UTC'));
+      _timezoneReady = true;
+    } catch (e) {
+      debugPrint('NotificationService: Could not set fallback timezone: $e');
+    }
+  }
 
   static Future<void> initialize(UserProvider userProvider) async {
     _userProvider = userProvider;
@@ -32,12 +44,10 @@ class NotificationService {
           .timeout(const Duration(seconds: 2), onTimeout: () => TimezoneInfo(identifier: 'UTC'))).identifier;
       debugPrint('NotificationService: Local timezone is $timeZoneName');
       tz.setLocalLocation(tz.getLocation(timeZoneName));
+      _timezoneReady = true;
     } catch (e) {
       debugPrint('Could not initialize timezone for notifications: $e');
-      // Default to UTC if it fails
-      try {
-        tz.setLocalLocation(tz.getLocation('UTC'));
-      } catch (_) {}
+      _ensureTimezoneReady();
     }
 
     const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -116,9 +126,38 @@ class NotificationService {
     // 'no' action doesn't require state update
   }
 
-  static Future<void> scheduleSmartWaterReminders(int currentIntake, int goal) async {
+  static Future<void> cancelWaterReminders() async {
     if (kIsWeb) return;
 
+    const activeRangeStart = 8;
+    const activeRangeEnd = 22;
+    for (int hour = activeRangeStart; hour < activeRangeEnd; hour += 3) {
+      await _notificationsPlugin.cancel(id: 1000 + hour);
+    }
+  }
+
+  static bool get _supportsScheduledNotifications {
+    if (kIsWeb) return false;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  static Future<void> scheduleSmartWaterReminders(int currentIntake, int goal) async {
+    if (!_supportsScheduledNotifications) return;
+
+    try {
+      await _scheduleSmartWaterRemindersImpl(currentIntake, goal);
+    } catch (e, stackTrace) {
+      debugPrint('NotificationService: Failed to schedule water reminders: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  static Future<void> _scheduleSmartWaterRemindersImpl(
+    int currentIntake,
+    int goal,
+  ) async {
+    _ensureTimezoneReady();
     final now = DateTime.now();
     const activeRangeStart = 8; // 8 AM
     const activeRangeEnd = 22;   // 10 PM
@@ -173,7 +212,7 @@ class NotificationService {
   }
 
   static Future<void> scheduleFastingEndNotification(DateTime startTime, int durationHours, int reminderOffsetMinutes) async {
-    if (kIsWeb) return;
+    if (!_supportsScheduledNotifications) return;
     
     await cancelFastingNotifications();
     

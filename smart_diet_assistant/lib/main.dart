@@ -1,48 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+
 import 'providers/user_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/input_screen.dart';
 import 'screens/main_navigation.dart';
 import 'utils/app_theme.dart';
-
-
-import 'package:hive_flutter/hive_flutter.dart';
-import 'hive/entities/ingredient_entity.dart';
-import 'hive/entities/meal_template_entity.dart';
-import 'hive/entities/ingredient_portion_entity.dart';
-import 'hive/entities/day_plan_entity.dart';
-// import 'hive/entities/meal_memory_entity.dart';
-// import 'hive/entities/user_meal_preference_entity.dart';
-import 'models/meal_model.dart';
+import 'hive/entities/hive_type_registry.dart';
 import 'services/persistence_service.dart';
 import 'hive/seed/seed_service.dart';
-void main() async {
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await Hive.initFlutter();
-  
-  Hive.registerAdapter(IngredientEntityAdapter());
-  Hive.registerAdapter(MealTemplateEntityAdapter());
-  Hive.registerAdapter(IngredientPortionAdapter());
-  Hive.registerAdapter(DayPlanEntityAdapter());
-  Hive.registerAdapter(MealTypeAdapter());
 
-  await PersistenceService.initHive();
-  await SeedService.seedIfNeeded();
+  String? startupError;
 
-final ingredients = PersistenceService.getAllIngredients();
-final ingredientIds = ingredients.map((e) => e.id).toSet();
+  try {
+    final appDir = await getApplicationDocumentsDirectory();
+    Hive.init('${appDir.path}/smart_diet_assistant_hive');
+    registerHiveAdapters();
 
-final templates = PersistenceService.getAllTemplates();
-
-for (final t in templates) {
-  for (final p in t.ingredients) {
-    if (!ingredientIds.contains(p.ingredientId)) {
-      print('BROKEN REFERENCE: ${t.name} -> ${p.ingredientId}');
-    }
+    await PersistenceService.initHive();
+    await SeedService.seedIfNeeded();
+  } catch (e, stackTrace) {
+    startupError = e.toString();
+    debugPrint('Startup failed: $e');
+    debugPrint(stackTrace.toString());
   }
-}
+
+  if (startupError != null) {
+    runApp(MaterialApp(
+      home: _StartupErrorScreen(message: startupError),
+    ));
+    return;
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -77,7 +71,10 @@ class SmartDietApp extends StatelessWidget {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 20),
-                        Text('Loading your diet profile...', style: TextStyle(fontSize: 16)),
+                        Text(
+                          'Loading your diet profile...',
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ],
                     ),
                   ),
@@ -93,6 +90,46 @@ class SmartDietApp extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _StartupErrorScreen extends StatelessWidget {
+  final String message;
+
+  const _StartupErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Could not start the app',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'If you see a lock error, quit other running copies of this app and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

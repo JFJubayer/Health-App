@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'meal_memory_entity.g.dart';
 
-@HiveType(typeId: 4)
+@HiveType(typeId: 6)
 class MealMemoryEntity {
   @HiveField(0)
   String id;

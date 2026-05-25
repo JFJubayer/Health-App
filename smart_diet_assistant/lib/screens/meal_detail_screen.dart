@@ -4,33 +4,44 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../models/meal_model.dart';
 import '../providers/user_provider.dart';
+import '../widgets/meal_picker_sheet.dart';
 
-class MealDetailScreen extends StatelessWidget {
+class MealDetailScreen extends StatefulWidget {
   final MealModel meal;
 
   const MealDetailScreen({super.key, required this.meal});
 
   @override
+  State<MealDetailScreen> createState() => _MealDetailScreenState();
+}
+
+class _MealDetailScreenState extends State<MealDetailScreen> {
+  int _satisfactionRating = 4;
+
+  MealModel get meal => widget.meal;
+
+  @override
   Widget build(BuildContext context) {
     final provider = Provider.of<UserProvider>(context);
+    final isMainPlan = provider.isMainPlanMeal(meal.id);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context),
+          _buildAppBar(context, isMainPlan),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   _buildNutritionalInfo(context),
-                   const SizedBox(height: 32),
-                   _buildIngredientList(context),
-                   const SizedBox(height: 32),
-                   _buildInstructions(context),
-                   const SizedBox(height: 100), // Space for fab
+                  _buildNutritionalInfo(context),
+                  const SizedBox(height: 32),
+                  _buildIngredientList(context),
+                  const SizedBox(height: 32),
+                  _buildInstructions(context),
+                  const SizedBox(height: 140),
                 ],
               ),
             ),
@@ -40,28 +51,119 @@ class MealDetailScreen extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: ElevatedButton.icon(
-          onPressed: () {
-            provider.toggleMealConsumed(meal.id);
-            Navigator.pop(context);
-          },
-          icon: Icon(meal.isConsumed ? Icons.undo : Icons.check_circle_outline),
-          label: Text(
-            meal.isConsumed ? 'Mark as Pending' : 'Mark as Consumed',
-            style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: meal.isConsumed ? Colors.grey[800] : Theme.of(context).colorScheme.primary,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!meal.isConsumed) ...[
+              Text(
+                'How was this meal?',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starIndex = index + 1;
+                  return IconButton(
+                    onPressed: () =>
+                        setState(() => _satisfactionRating = starIndex),
+                    icon: Icon(
+                      starIndex <= _satisfactionRating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 8),
+            ],
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (meal.isConsumed) {
+                  provider.toggleMealConsumed(meal.id);
+                } else {
+                  await provider.toggleMealConsumedWithFeedback(
+                    meal.id,
+                    satisfaction: _satisfactionRating.toDouble(),
+                  );
+                }
+                if (context.mounted) Navigator.pop(context);
+              },
+              icon: Icon(
+                meal.isConsumed ? Icons.undo : Icons.check_circle_outline,
+              ),
+              label: Text(
+                meal.isConsumed ? 'Mark as Pending' : 'Mark as Consumed',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: meal.isConsumed
+                    ? Colors.grey[800]
+                    : Theme.of(context).colorScheme.primary,
+                minimumSize: const Size(double.infinity, 52),
+              ),
+            ),
+            if (!meal.isConsumed) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(
+                        'Skip this meal?',
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                      ),
+                      content: Text(
+                        'This will log the meal as skipped and adjust your preferences.',
+                        style: GoogleFonts.outfit(),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(
+                            'Skip',
+                            style: GoogleFonts.outfit(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true && context.mounted) {
+                    await provider.skipMeal(meal.id);
+                    if (context.mounted) Navigator.pop(context);
+                  }
+                },
+                child: Text(
+                  'Skip this meal',
+                  style: GoogleFonts.outfit(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ).animate().slideY(begin: 1, duration: 400.ms, curve: Curves.easeOut),
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    Color color = _getMealColor(meal.type);
-    
+  Widget _buildAppBar(BuildContext context, bool isMainPlan) {
+    final color = _getMealColor(meal.type);
+
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
@@ -72,17 +174,16 @@ class MealDetailScreen extends StatelessWidget {
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-          tooltip: 'Replace Meal',
-          onPressed: () {
-             Provider.of<UserProvider>(context, listen: false).replaceMeal(meal.id);
-             Navigator.pop(context);
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('Meal replaced with a healthy alternative!')),
-             );
-          },
-        ),
+        if (isMainPlan)
+          IconButton(
+            icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+            tooltip: 'Replace Meal',
+            onPressed: () => showMealPickerSheet(
+              context,
+              meal.id,
+              popRouteOnSelect: true,
+            ),
+          ),
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
@@ -153,7 +254,25 @@ class MealDetailScreen extends StatelessWidget {
                 ),
                 Text(
                   '${meal.calories} Calories Total',
-                  style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.9), fontSize: 16),
+                  style: GoogleFonts.outfit(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.schedule, color: Colors.white70, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${meal.prepTimeMinutes} min prep',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -187,41 +306,68 @@ class MealDetailScreen extends StatelessWidget {
   }
 
   Widget _buildIngredientList(BuildContext context) {
-    bool hasComponents = meal.components.isNotEmpty;
-    
+    final hasComponents = meal.components.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(hasComponents ? 'Meal Components' : 'Ingredients', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          hasComponents ? 'Meal Components' : 'Ingredients',
+          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (hasComponents)
           ...meal.components.map((comp) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(comp['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
-                Text('${comp['weight'].toInt()}g', style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ))
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color ??
+                      Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      comp['name'],
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      '${comp['weight'].toInt()}g',
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ))
         else
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: meal.ingredients.map((ing) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(ing, style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.onSurface)),
-            )).toList(),
+            children: meal.ingredients
+                .map((ing) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardTheme.color ??
+                            Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        ing,
+                        style: GoogleFonts.outfit(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ))
+                .toList(),
           ),
       ],
     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1);
@@ -231,42 +377,53 @@ class MealDetailScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Structured Preparation', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          'Structured Preparation',
+          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (meal.recipeSteps.isNotEmpty)
           ...meal.recipeSteps.asMap().entries.map((entry) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _getMealColor(meal.type).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '${entry.key + 1}',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: _getMealColor(meal.type),
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _getMealColor(meal.type).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${entry.key + 1}',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          color: _getMealColor(meal.type),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    entry.value,
-                    style: GoogleFonts.outfit(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
-                  ),
-                ),
-              ],
-            ),
-          ))
+              ))
         else
           Text(
             meal.instructions,
-            style: GoogleFonts.outfit(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.5),
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.5,
+            ),
           ),
       ],
     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1);
@@ -274,17 +431,23 @@ class MealDetailScreen extends StatelessWidget {
 
   IconData _getMealIcon(MealType type) {
     switch (type) {
-      case MealType.breakfast: return Icons.wb_sunny_rounded;
-      case MealType.lunch: return Icons.fastfood_rounded;
-      case MealType.dinner: return Icons.nightlight_round;
+      case MealType.breakfast:
+        return Icons.wb_sunny_rounded;
+      case MealType.lunch:
+        return Icons.fastfood_rounded;
+      case MealType.dinner:
+        return Icons.nightlight_round;
     }
   }
 
   Color _getMealColor(MealType type) {
     switch (type) {
-      case MealType.breakfast: return Colors.orange;
-      case MealType.lunch: return Colors.green;
-      case MealType.dinner: return Colors.indigo;
+      case MealType.breakfast:
+        return Colors.orange;
+      case MealType.lunch:
+        return Colors.green;
+      case MealType.dinner:
+        return Colors.indigo;
     }
   }
 }

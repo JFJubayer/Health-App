@@ -7,10 +7,17 @@ import '../models/user_model.dart';
 import 'main_navigation.dart';
 
 class InputScreen extends StatefulWidget {
-  const InputScreen({super.key});
+  final UserModel? initialUser;
+  final bool isEditMode;
+
+  const InputScreen({
+    super.key,
+    this.initialUser,
+    this.isEditMode = false,
+  });
 
   @override
-  _InputScreenState createState() => _InputScreenState();
+  State<InputScreen> createState() => _InputScreenState();
 }
 
 class _InputScreenState extends State<InputScreen> {
@@ -26,6 +33,31 @@ class _InputScreenState extends State<InputScreen> {
   final TextEditingController _heightCmController = TextEditingController();
   final TextEditingController _heightFeetController = TextEditingController();
   final TextEditingController _heightInchesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final user = widget.initialUser;
+    if (user != null) {
+      _gender = user.gender;
+      _selectedConditions.addAll(user.conditions);
+      _nameController.text = user.name;
+      _ageController.text = user.age.toString();
+      _weightController.text = user.weightKg.toStringAsFixed(1);
+      _heightCmController.text = user.heightCm.toStringAsFixed(0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightCmController.dispose();
+    _heightFeetController.dispose();
+    _heightInchesController.dispose();
+    super.dispose();
+  }
 
   void _submitData() {
     if (_formKey.currentState!.validate()) {
@@ -51,12 +83,17 @@ class _InputScreenState extends State<InputScreen> {
         conditions: _selectedConditions,
       );
 
-      Provider.of<UserProvider>(context, listen: false).setUserData(user);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigation()),
-      );
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      if (widget.isEditMode) {
+        provider.updateUserProfile(user);
+        Navigator.pop(context);
+      } else {
+        provider.setUserData(user);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      }
     }
   }
 
@@ -65,7 +102,10 @@ class _InputScreenState extends State<InputScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Health Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(
+          widget.isEditMode ? 'Edit Profile' : 'Health Profile',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
       ),
@@ -92,7 +132,9 @@ class _InputScreenState extends State<InputScreen> {
               const SizedBox(height: 48),
               ElevatedButton(
                 onPressed: _submitData,
-                child: const Text('Calculate My Plan'),
+                child: Text(
+                  widget.isEditMode ? 'Save Changes' : 'Calculate My Plan',
+                ),
               ).animate().fadeIn(delay: 600.ms).scale(begin: const Offset(0.95, 0.95)),
               const SizedBox(height: 40),
             ],

@@ -6,6 +6,7 @@ import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
 import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
+import '../widgets/meal_picker_sheet.dart';
 
 class MealsScreen extends StatelessWidget {
   const MealsScreen({super.key});
@@ -96,7 +97,7 @@ class MealsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          meal.type.name.toUpperCase(),
+                          '${meal.type.name.toUpperCase()} · ${meal.prepTimeMinutes} MIN',
                           style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: color, letterSpacing: 1),
                         ),
                         const SizedBox(height: 4),
@@ -137,16 +138,17 @@ class MealsScreen extends StatelessWidget {
                     '${meal.protein.toInt()}g P • ${meal.carbs.toInt()}g C • ${meal.fat.toInt()}g F',
                     style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
                   ),
-                  TextButton.icon(
-                    onPressed: () => provider.replaceMeal(meal.id),
-                    icon: Icon(Icons.swap_horiz, size: 18, color: color),
-                    label: Text('Swap', style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      backgroundColor: color.withValues(alpha: 0.05),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  if (provider.isMainPlanMeal(meal.id))
+                    TextButton.icon(
+                      onPressed: () => showMealPickerSheet(context, meal.id),
+                      icon: Icon(Icons.swap_horiz, size: 18, color: color),
+                      label: Text('Swap', style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        backgroundColor: color.withValues(alpha: 0.05),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),

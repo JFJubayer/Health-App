@@ -93,21 +93,56 @@ class DietService {
       recipeSteps: template.recipeSteps,
       instructions: template.instructions,
       imageUrl: template.imageUrl,
+      prepTimeMinutes: template.prepTimeMinutes,
     );
   }
 
-
-  static Future<MealTemplateEntity> getAlternativeMeal(MealType type, double targetCalories, List<String> conditions, String currentMealId) async {
+  static Future<List<MealTemplateEntity>> getMealAlternatives(
+    MealType type,
+    double targetCalories,
+    List<String> conditions,
+    String currentMealId,
+  ) async {
+    await seedDataIfNeeded();
     final allTemplates = PersistenceService.getAllTemplates();
     final ingredientsList = PersistenceService.getAllIngredients();
     final Map<String, IngredientEntity> ingredientsMap = {};
     for (var i in ingredientsList) {
       ingredientsMap[i.id] = i;
     }
-    final selector = MealSelectorService(allMeals: allTemplates, ingredients: ingredientsMap);
-    final macros = MacroTargets(proteinGrams: 50, carbsGrams: 50, fatGrams: 20); // Base macro for alternative
-    final options = selector.selectMeals(targetCalories: targetCalories, macros: macros, conditions: conditions, type: type);
-    
-    return options.firstWhere((m) => m.id != currentMealId, orElse: () => options.isNotEmpty ? options.first : allTemplates.firstWhere((t) => t.type == type));
+    final selector = MealSelectorService(
+      allMeals: allTemplates,
+      ingredients: ingredientsMap,
+    );
+    final macros = MacroTargets(
+      proteinGrams: 50,
+      carbsGrams: 50,
+      fatGrams: 20,
+    );
+    final options = selector.selectMeals(
+      targetCalories: targetCalories,
+      macros: macros,
+      conditions: conditions,
+      type: type,
+    );
+    return options.where((m) => m.id != currentMealId).take(3).toList();
+  }
+
+  static Future<MealTemplateEntity> getAlternativeMeal(
+    MealType type,
+    double targetCalories,
+    List<String> conditions,
+    String currentMealId,
+  ) async {
+    final alternatives = await getMealAlternatives(
+      type,
+      targetCalories,
+      conditions,
+      currentMealId,
+    );
+    if (alternatives.isNotEmpty) return alternatives.first;
+
+    final allTemplates = PersistenceService.getAllTemplates();
+    return allTemplates.firstWhere((t) => t.type == type);
   }
 }

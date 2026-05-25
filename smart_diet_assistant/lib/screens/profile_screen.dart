@@ -8,6 +8,10 @@ import '../models/user_model.dart';
 import 'input_screen.dart';
 import '../services/notification_service.dart';
 import '../services/health_service.dart';
+import '../services/persistence_service.dart';
+import '../services/diet_service.dart';
+import '../services/meal_feedback_service.dart';
+import '../widgets/water_goal_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -52,13 +56,26 @@ class ProfileScreen extends StatelessWidget {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InputScreen(
+                            initialUser: user,
+                            isEditMode: true,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.edit, color: Colors.white, size: 16),
                     ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 16),
                   ),
                 ],
               ),
@@ -92,6 +109,16 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.05),
+            const SizedBox(height: 24),
+            _buildMetabolicSection(context, userProvider)
+                .animate()
+                .fadeIn(delay: 225.ms)
+                .slideY(begin: 0.05),
+            const SizedBox(height: 24),
+            _buildFavoritesSection(context)
+                .animate()
+                .fadeIn(delay: 240.ms)
+                .slideY(begin: 0.05),
             const SizedBox(height: 24),
             _buildBadgesSection(context, userProvider).animate().fadeIn(delay: 250.ms).slideY(begin: 0.05),
             const SizedBox(height: 24),
@@ -127,12 +154,34 @@ class ProfileScreen extends StatelessWidget {
                     title: Text('Smart Hydration Reminders', style: GoogleFonts.outfit(fontSize: 15)),
                     subtitle: Text('Actionable alerts during the day', style: GoogleFonts.outfit(fontSize: 12)),
                     trailing: Switch(
-                      value: true, // We can add a setting in provider for this later
-                      onChanged: (val) {
-                        // Logic to enable/disable
-                      },
+                      value: userProvider.hydrationRemindersEnabled,
+                      onChanged: userProvider.setHydrationRemindersEnabled,
                       activeThumbColor: Theme.of(context).colorScheme.primary,
                     ),
+                  ),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.cyan.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.water_drop_outlined,
+                        color: Colors.cyan,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      'Daily Water Goal',
+                      style: GoogleFonts.outfit(fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      '${userProvider.waterGoal} ml',
+                      style: GoogleFonts.outfit(fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => showWaterGoalDialog(context),
                   ),
                   ListTile(
                     leading: Container(
@@ -218,6 +267,140 @@ class ProfileScreen extends StatelessWidget {
             child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.05)),
           ),
       ],
+    );
+  }
+
+  Widget _buildMetabolicSection(BuildContext context, UserProvider provider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color ??
+            Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 20, top: 16, bottom: 8),
+            child: Text(
+              'Metabolic Plan',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          _buildProfileTile(
+            context,
+            Icons.local_fire_department_outlined,
+            'Calorie tier',
+            provider.calorieTier,
+            Theme.of(context).colorScheme.primary,
+          ),
+          _buildProfileTile(
+            context,
+            Icons.speed_outlined,
+            'BMR',
+            '${provider.bmr.toInt()} kcal/day',
+            Colors.orange,
+          ),
+          _buildProfileTile(
+            context,
+            Icons.directions_run_outlined,
+            'TDEE',
+            '${provider.tdee.toInt()} kcal/day',
+            Colors.green,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFavoritesSection(BuildContext context) {
+    final prefs = PersistenceService.getPreferences(MealFeedbackService.userId);
+    final favoriteIds = prefs?.favoriteMealIds ?? [];
+    final ratings = prefs?.mealRatings ?? {};
+
+    final templates = PersistenceService.getAllTemplates();
+    final templateMap = {for (var t in templates) t.id: t};
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color ??
+            Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 20, top: 16, bottom: 8, right: 20),
+            child: Text(
+              'Favorite Meals',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          if (favoriteIds.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Text(
+                'Rate meals 4.5+ when you consume them to auto-favorite.',
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            ...favoriteIds.map((id) {
+              final template = templateMap[id];
+              if (template == null) return const SizedBox.shrink();
+              final meal = DietService.resolveMealModel(template);
+              final rating = ratings[id];
+              return ListTile(
+                leading: Icon(
+                  Icons.favorite,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                title: Text(meal.name, style: GoogleFonts.outfit(fontSize: 15)),
+                subtitle: Text(
+                  '${meal.calories} kcal',
+                  style: GoogleFonts.outfit(fontSize: 12),
+                ),
+                trailing: rating != null
+                    ? Chip(
+                        label: Text(
+                          rating.toStringAsFixed(1),
+                          style: GoogleFonts.outfit(fontSize: 11),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      )
+                    : null,
+              );
+            }),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 

@@ -226,6 +226,38 @@ class PersistenceService {
     return prefs.getInt(_keyFastingReminderOffset) ?? 0; // Default: at time of end
   }
 
+  static String _customMealsKey(String dateStr) => 'custom_meals_$dateStr';
+
+  static Future<void> saveCustomMealsForDate(
+    String dateStr,
+    List<MealModel> meals,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final mealList = meals.map((m) => m.toMap()).toList();
+    await prefs.setString(_customMealsKey(dateStr), jsonEncode(mealList));
+  }
+
+  static Future<List<MealModel>> getCustomMealsForDate(String dateStr) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_customMealsKey(dateStr));
+    if (data == null) return [];
+
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((m) => MealModel.fromMap(m)).toList();
+  }
+
+  static const String _keyHydrationReminders = 'hydration_reminders_enabled';
+
+  static Future<void> saveHydrationRemindersEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHydrationReminders, enabled);
+  }
+
+  static Future<bool> getHydrationRemindersEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHydrationReminders) ?? true;
+  }
+
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

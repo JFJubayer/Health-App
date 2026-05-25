@@ -8,7 +8,7 @@ part of 'meal_memory_entity.dart';
 
 class MealMemoryEntityAdapter extends TypeAdapter<MealMemoryEntity> {
   @override
-  final int typeId = 4;
+  final int typeId = 6;
 
   @override
   MealMemoryEntity read(BinaryReader reader) {

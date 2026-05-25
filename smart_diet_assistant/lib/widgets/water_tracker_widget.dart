@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
+import 'water_goal_dialog.dart';
 
 class WaterTrackerWidget extends StatelessWidget {
   const WaterTrackerWidget({super.key});
@@ -51,20 +52,32 @@ class WaterTrackerWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${(progress * 100).toInt()}%',
-                  style: GoogleFonts.outfit(
-                    color: const Color(0xFF3B82F6),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => showWaterGoalDialog(context),
+                    icon: Icon(
+                      Icons.settings_outlined,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    tooltip: 'Edit water goal',
                   ),
-                ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${(progress * 100).toInt()}%',
+                      style: GoogleFonts.outfit(
+                        color: const Color(0xFF3B82F6),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
