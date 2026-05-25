@@ -15,11 +15,12 @@ class InputScreen extends StatefulWidget {
 
 class _InputScreenState extends State<InputScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   String _gender = 'Male';
   bool _useCm = true;
   final List<String> _selectedConditions = [];
-  
+
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightCmController = TextEditingController();
@@ -28,9 +29,10 @@ class _InputScreenState extends State<InputScreen> {
 
   void _submitData() {
     if (_formKey.currentState!.validate()) {
+      String name = _nameController.text;
       int age = int.parse(_ageController.text);
       double weight = double.parse(_weightController.text);
-      
+
       double heightCm;
       if (_useCm) {
         heightCm = double.parse(_heightCmController.text);
@@ -41,6 +43,7 @@ class _InputScreenState extends State<InputScreen> {
       }
 
       UserModel user = UserModel(
+        name: name,
         age: age,
         gender: _gender,
         heightCm: heightCm,
@@ -75,6 +78,8 @@ class _InputScreenState extends State<InputScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 40),
+              _buildNameField(),
+              const SizedBox(height: 24),
               _buildGenderToggle(),
               const SizedBox(height: 24),
               _buildTextField(_ageController, 'Age', Icons.cake_outlined, 'years'),
@@ -122,6 +127,22 @@ class _InputScreenState extends State<InputScreen> {
         ).animate().fadeIn(delay: 300.ms),
       ],
     );
+  }
+
+  Widget _buildNameField() {
+    return TextFormField(
+      controller: _nameController,
+      keyboardType: TextInputType.name,
+      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        labelText: 'Your Name',
+        prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
+      ),
+      validator: (value) => (value == null || value.isEmpty) ? 'Please enter your name' : null,
+    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1);
   }
 
   Widget _buildGenderToggle() {

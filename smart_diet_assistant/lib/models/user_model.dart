@@ -1,4 +1,5 @@
 class UserModel {
+  String name;
   int age;
   String gender; // 'Male' or 'Female'
   double heightCm;
@@ -6,6 +7,7 @@ class UserModel {
   List<String> conditions;
 
   UserModel({
+    required this.name,
     required this.age,
     required this.gender,
     required this.heightCm,
@@ -14,6 +16,7 @@ class UserModel {
   });
 
   UserModel copyWith({
+    String? name,
     int? age,
     String? gender,
     double? heightCm,
@@ -21,6 +24,7 @@ class UserModel {
     List<String>? conditions,
   }) {
     return UserModel(
+      name: name ?? this.name,
       age: age ?? this.age,
       gender: gender ?? this.gender,
       heightCm: heightCm ?? this.heightCm,
@@ -31,6 +35,7 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'name': name,
       'age': age,
       'gender': gender,
       'heightCm': heightCm,
@@ -41,6 +46,7 @@ class UserModel {
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
+      name: map['name'] ?? 'User',
       age: map['age']?.toInt() ?? 0,
       gender: map['gender'] ?? 'Male',
       heightCm: map['heightCm']?.toDouble() ?? 0.0,
