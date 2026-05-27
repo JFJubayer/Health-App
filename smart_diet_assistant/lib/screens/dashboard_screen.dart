@@ -56,12 +56,7 @@ class DashboardScreen extends StatelessWidget {
                     fatTarget: (totalTarget * 0.3) / 9,
                     mealsConsumed: userProvider.mealPlan.where((m) => m.isConsumed).length,
                   ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 12),
-                  _buildMetabolicSummary(context, userProvider)
-                      .animate()
-                      .fadeIn(delay: 100.ms)
-                      .slideY(begin: 0.05),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
@@ -120,13 +115,6 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(
-          'BMR ${provider.bmr.toInt()} kcal · TDEE ${provider.tdee.toInt()} kcal',
-          style: GoogleFonts.outfit(
-            fontSize: 13,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
       ],
     );
   }

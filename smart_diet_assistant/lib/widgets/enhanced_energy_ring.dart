@@ -125,7 +125,7 @@ class EnhancedEnergyRing extends StatelessWidget {
                       'Daily Progress',
                       style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     _buildMacroBar(
                       context,
                       'Protein',
