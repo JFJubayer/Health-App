@@ -7,30 +7,64 @@ import '../models/user_model.dart';
 import 'main_navigation.dart';
 
 class InputScreen extends StatefulWidget {
-  const InputScreen({super.key});
+  final UserModel? initialUser;
+  final bool isEditMode;
+
+  const InputScreen({
+    super.key,
+    this.initialUser,
+    this.isEditMode = false,
+  });
 
   @override
-  _InputScreenState createState() => _InputScreenState();
+  State<InputScreen> createState() => _InputScreenState();
 }
 
 class _InputScreenState extends State<InputScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   String _gender = 'Male';
   bool _useCm = true;
   final List<String> _selectedConditions = [];
-  
+
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightCmController = TextEditingController();
   final TextEditingController _heightFeetController = TextEditingController();
   final TextEditingController _heightInchesController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    final user = widget.initialUser;
+    if (user != null) {
+      _gender = user.gender;
+      _selectedConditions.addAll(user.conditions);
+      _nameController.text = user.name;
+      _ageController.text = user.age.toString();
+      _weightController.text = user.weightKg.toStringAsFixed(1);
+      _heightCmController.text = user.heightCm.toStringAsFixed(0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightCmController.dispose();
+    _heightFeetController.dispose();
+    _heightInchesController.dispose();
+    super.dispose();
+  }
+
   void _submitData() {
     if (_formKey.currentState!.validate()) {
+      String name = _nameController.text;
       int age = int.parse(_ageController.text);
       double weight = double.parse(_weightController.text);
-      
+
       double heightCm;
       if (_useCm) {
         heightCm = double.parse(_heightCmController.text);
@@ -41,6 +75,7 @@ class _InputScreenState extends State<InputScreen> {
       }
 
       UserModel user = UserModel(
+        name: name,
         age: age,
         gender: _gender,
         heightCm: heightCm,
@@ -48,22 +83,30 @@ class _InputScreenState extends State<InputScreen> {
         conditions: _selectedConditions,
       );
 
-      Provider.of<UserProvider>(context, listen: false).setUserData(user);
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigation()),
-      );
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      if (widget.isEditMode) {
+        provider.updateUserProfile(user);
+        Navigator.pop(context);
+      } else {
+        provider.setUserData(user);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Health Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text(
+          widget.isEditMode ? 'Edit Profile' : 'Health Profile',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -75,6 +118,8 @@ class _InputScreenState extends State<InputScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 40),
+              _buildNameField(),
+              const SizedBox(height: 24),
               _buildGenderToggle(),
               const SizedBox(height: 24),
               _buildTextField(_ageController, 'Age', Icons.cake_outlined, 'years'),
@@ -87,7 +132,9 @@ class _InputScreenState extends State<InputScreen> {
               const SizedBox(height: 48),
               ElevatedButton(
                 onPressed: _submitData,
-                child: const Text('Calculate My Plan'),
+                child: Text(
+                  widget.isEditMode ? 'Save Changes' : 'Calculate My Plan',
+                ),
               ).animate().fadeIn(delay: 600.ms).scale(begin: const Offset(0.95, 0.95)),
               const SizedBox(height: 40),
             ],
@@ -103,25 +150,41 @@ class _InputScreenState extends State<InputScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF059669).withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.analytics_outlined, size: 40, color: Color(0xFF059669)),
+          child: Icon(Icons.analytics_outlined, size: 40, color: Theme.of(context).colorScheme.primary),
         ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
         const SizedBox(height: 16),
         Text(
           'Personalize Your Diet',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ).animate().fadeIn(delay: 200.ms),
         const SizedBox(height: 8),
         Text(
           'Enter your details to generate a custom meal plan matching your body\'s needs.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF6B7280)),
+          style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ).animate().fadeIn(delay: 300.ms),
       ],
     );
+  }
+
+  Widget _buildNameField() {
+    return TextFormField(
+      controller: _nameController,
+      keyboardType: TextInputType.name,
+      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        labelText: 'Your Name',
+        prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
+      ),
+      validator: (value) => (value == null || value.isEmpty) ? 'Please enter your name' : null,
+    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1);
   }
 
   Widget _buildGenderToggle() {
@@ -142,19 +205,19 @@ class _InputScreenState extends State<InputScreen> {
         duration: 200.ms,
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF059669) : Colors.white,
+          color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? const Color(0xFF059669) : Colors.grey.withValues(alpha: 0.2)),
+          border: Border.all(color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.white : const Color(0xFF6B7280), size: 20),
+            Icon(icon, color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant, size: 20),
             const SizedBox(width: 8),
             Text(
               type,
               style: GoogleFonts.outfit(
-                color: isSelected ? Colors.white : const Color(0xFF6B7280),
+                color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -171,11 +234,11 @@ class _InputScreenState extends State<InputScreen> {
       style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: const Color(0xFF059669)),
+        prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
         suffixText: suffix,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF059669), width: 2)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)),
       ),
       validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1);
@@ -209,7 +272,7 @@ class _InputScreenState extends State<InputScreen> {
   Widget _buildUnitToggle() {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           _unitOption('Cm', _useCm, () => setState(() => _useCm = true)),
@@ -225,7 +288,7 @@ class _InputScreenState extends State<InputScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? Theme.of(context).colorScheme.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)] : null,
         ),
@@ -252,8 +315,8 @@ class _InputScreenState extends State<InputScreen> {
             onSelected: (selected) {
               setState(() => selected ? _selectedConditions.add(c) : _selectedConditions.remove(c));
             },
-            selectedColor: const Color(0xFF059669).withValues(alpha: 0.2),
-            checkmarkColor: const Color(0xFF059669),
+            selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            checkmarkColor: Theme.of(context).colorScheme.primary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           )).toList(),
         ),

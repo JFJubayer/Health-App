@@ -1,4 +1,18 @@
-enum MealType { breakfast, lunch, dinner }
+import 'package:hive/hive.dart';
+
+part 'meal_model.g.dart';
+
+@HiveType(typeId: 8)
+enum MealType {
+  @HiveField(0)
+  breakfast,
+  
+  @HiveField(1)
+  lunch,
+  
+  @HiveField(2)
+  dinner
+}
 
 class MealModel {
   final String id;
@@ -13,6 +27,7 @@ class MealModel {
   final List<String> recipeSteps;
   final List<Map<String, dynamic>> components; // Added for structured meal building
   final String? imageUrl;
+  final int prepTimeMinutes;
   bool isConsumed;
 
   MealModel({
@@ -28,6 +43,7 @@ class MealModel {
     this.recipeSteps = const [],
     this.components = const [],
     this.imageUrl,
+    this.prepTimeMinutes = 15,
     this.isConsumed = false,
   });
 
@@ -45,6 +61,7 @@ class MealModel {
       'recipeSteps': recipeSteps,
       'components': components,
       'imageUrl': imageUrl,
+      'prepTimeMinutes': prepTimeMinutes,
       'isConsumed': isConsumed,
     };
   }
@@ -63,6 +80,7 @@ class MealModel {
       recipeSteps: List<String>.from(map['recipeSteps'] ?? []),
       components: List<Map<String, dynamic>>.from(map['components'] ?? []),
       imageUrl: map['imageUrl'],
+      prepTimeMinutes: map['prepTimeMinutes']?.toInt() ?? 15,
       isConsumed: map['isConsumed'] ?? false,
     );
   }

@@ -1,16 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+
 import 'providers/user_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/input_screen.dart';
 import 'screens/main_navigation.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'utils/app_theme.dart';
+import 'hive/entities/hive_type_registry.dart';
+import 'services/persistence_service.dart';
+import 'hive/seed/seed_service.dart';
 
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  String? startupError;
+
+  try {
+    final appDir = await getApplicationDocumentsDirectory();
+    Hive.init('${appDir.path}/smart_diet_assistant_hive');
+    registerHiveAdapters();
+
+    await PersistenceService.initHive();
+    await SeedService.seedIfNeeded();
+  } catch (e, stackTrace) {
+    startupError = e.toString();
+    debugPrint('Startup failed: $e');
+    debugPrint(stackTrace.toString());
+  }
+
+  if (startupError != null) {
+    runApp(MaterialApp(
+      home: _StartupErrorScreen(message: startupError),
+    ));
+    return;
+  }
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const SmartDietApp(),
     ),
@@ -22,76 +53,83 @@ class SmartDietApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Smart Diet Assistant',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF059669),
-          primary: const Color(0xFF059669),
-          secondary: const Color(0xFF0D9488),
-          surface: Colors.white,
-          background: const Color(0xFFF9FAFB),
-        ),
-        textTheme: GoogleFonts.outfitTextTheme(Theme.of(context).textTheme).copyWith(
-          displayLarge: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
-          titleLarge: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF1F2937)),
-        ),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: GoogleFonts.outfit(
-            color: const Color(0xFF1F2937),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-          iconTheme: const IconThemeData(color: Color(0xFF1F2937)),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
-          ),
-          color: Colors.white,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF059669),
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 0,
-          ),
-        ),
-      ),
-      home: Consumer<UserProvider>(
-        builder: (context, userProvider, child) {
-          if (userProvider.isLoading) {
-            return const Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 20),
-                    Text('Loading your diet profile...', style: TextStyle(fontSize: 16)),
-                  ],
-                ),
-              ),
-            );
-          }
-          
-          if (userProvider.user != null) {
-            return const MainNavigation();
-          }
-          
-          return const InputScreen();
-        },
-      ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          title: 'Smart Diet Assistant',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          home: Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              if (userProvider.isLoading) {
+                return const Scaffold(
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 20),
+                        Text(
+                          'Loading your diet profile...',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
 
+              if (userProvider.user != null) {
+                return const MainNavigation();
+              }
+
+              return const InputScreen();
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StartupErrorScreen extends StatelessWidget {
+  final String message;
+
+  const _StartupErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Could not start the app',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'If you see a lock error, quit other running copies of this app and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

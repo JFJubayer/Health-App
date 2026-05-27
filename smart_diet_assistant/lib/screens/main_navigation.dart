@@ -32,8 +32,8 @@ class _MainNavigationState extends State<MainNavigation> {
             _currentIndex = index;
           });
         },
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFF059669).withValues(alpha: 0.1),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        indicatorColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           _buildDestination(Icons.dashboard_outlined, Icons.dashboard_rounded, 'Overview'),
@@ -47,8 +47,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   Widget _buildDestination(IconData icon, IconData selectedIcon, String label) {
     return NavigationDestination(
-      icon: Icon(icon, color: const Color(0xFF6B7280)),
-      selectedIcon: Icon(selectedIcon, color: const Color(0xFF059669)),
+      icon: Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant),
+      selectedIcon: Icon(selectedIcon, color: Theme.of(context).colorScheme.primary),
       label: label,
     );
   }

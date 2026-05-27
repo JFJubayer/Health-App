@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
-import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
 import '../widgets/fasting_timer_widget.dart';
+import '../widgets/greeting_header.dart';
+import '../widgets/enhanced_energy_ring.dart';
+import '../widgets/smart_meal_card.dart';
+import '../services/recommendation_generator.dart';
+import '../services/persistence_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -24,44 +27,54 @@ class DashboardScreen extends StatelessWidget {
 
     final totalTarget = userProvider.tdee;
     final consumed = userProvider.totalConsumedCalories.toDouble();
+    // ignore: unused_local_variable
     final remaining = (totalTarget - consumed).clamp(0.0, totalTarget);
-    final progress = (consumed / totalTarget).clamp(0.0, 1.0);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(context),
+          SliverToBoxAdapter(
+            child: GreetingHeader(
+              userName: userProvider.user!.name,
+              streakCount: userProvider.gamification.currentStreak,
+            ),
+          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (userProvider.gamification.currentStreak > 0)
-                    _buildStreakBanner(userProvider.gamification.currentStreak).animate().fadeIn(duration: 500.ms).slideY(begin: -0.1),
-                  if (userProvider.gamification.currentStreak > 0)
-                    const SizedBox(height: 20),
-                  _buildHealthRing(context, consumed, totalTarget, progress).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 30),
-                  _buildMacroRow(userProvider).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 30),
+                  EnhancedEnergyRing(
+                    consumed: consumed,
+                    target: totalTarget,
+                    proteinConsumed: userProvider.totalConsumedProtein,
+                    proteinTarget: (totalTarget * 0.3) / 4,
+                    carbsConsumed: userProvider.totalConsumedCarbs,
+                    carbsTarget: (totalTarget * 0.4) / 4,
+                    fatConsumed: userProvider.totalConsumedFat,
+                    fatTarget: (totalTarget * 0.3) / 9,
+                    mealsConsumed: userProvider.mealPlan.where((m) => m.isConsumed).length,
+                  ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 20),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 30),
+                  _buildSmartRecommendations(context, userProvider),
                   const SizedBox(height: 30),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Today\'s Plan',
-                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                       ),
                       TextButton.icon(
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddMealScreen())),
                         icon: const Icon(Icons.add_circle_outline, size: 20),
                         label: Text('Manual Entry', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFF059669)),
+                        style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
                       ),
                     ],
                   ),
@@ -76,216 +89,33 @@ class DashboardScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AddMealScreen())),
-        backgroundColor: const Color(0xFF059669),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('Add Meal', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
       ).animate().scale(delay: 1000.ms).fadeIn(),
     );
   }
 
-  Widget _buildSliverAppBar(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 120.0,
-      floating: false,
-      pinned: true,
-      backgroundColor: Colors.white,
-      elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: Text(
-          'My Dashboard',
-          style: GoogleFonts.outfit(color: const Color(0xFF1F2937), fontWeight: FontWeight.bold, fontSize: 22),
-        ),
-        background: Container(color: Colors.white),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.picture_as_pdf_outlined, color: Color(0xFF059669)),
-          onPressed: () {
-            final provider = Provider.of<UserProvider>(context, listen: false);
-            if (provider.user != null) {
-              ExportService.exportToPdf(provider.user!, provider.mealPlan);
-            }
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: CircleAvatar(
-            backgroundColor: const Color(0xFF059669).withValues(alpha: 0.1),
-            child: const Icon(Icons.person, color: Color(0xFF059669)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStreakBanner(int streak) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF8C00), Color(0xFFFF512F)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFFFF512F).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 5)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Text('🔥', style: TextStyle(fontSize: 24)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$streak Day Tracking Streak!',
-                  style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                Text(
-                  'Keep it up! Consistency is key.',
-                  style: GoogleFonts.outfit(color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHealthRing(BuildContext context, double consumed, double target, double progress) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  PieChart(
-                    PieChartData(
-                      sectionsSpace: 0,
-                      centerSpaceRadius: 55,
-                      startDegreeOffset: 270,
-                      sections: [
-                        PieChartSectionData(
-                          color: const Color(0xFF059669),
-                          value: progress * 100,
-                          radius: 12,
-                          showTitle: false,
-                        ),
-                        PieChartSectionData(
-                          color: const Color(0xFFF3F4F6),
-                          value: (1 - progress) * 100,
-                          radius: 10,
-                          showTitle: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${consumed.toInt()}',
-                        style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
-                      ),
-                      Text(
-                        'of ${target.toInt()} kcal',
-                        style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            flex: 5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Daily Progress', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(
-                  'You have consumed ${(progress * 100).toInt()}% of your daily goal.',
-                  style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF6B7280)),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF059669).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'On Track!',
-                    style: GoogleFonts.outfit(color: const Color(0xFF059669), fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMacroRow(UserProvider provider) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildMetabolicSummary(BuildContext context, UserProvider provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildMacroCard('Protein', provider.totalConsumedProtein, 'g', Colors.orange),
-        _buildMacroCard('Carbs', provider.totalConsumedCarbs, 'g', Colors.blue),
-        _buildMacroCard('Fats', provider.totalConsumedFat, 'g', Colors.purple),
-      ],
-    );
-  }
-
-  Widget _buildMacroCard(String title, double value, String unit, Color color) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-        ),
-        child: Column(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            Text(title, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280))),
-            const SizedBox(height: 8),
-            Text(
-              '${value.toInt()}$unit',
-              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            Chip(
+              label: Text(
+                provider.calorieTier,
+                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              side: BorderSide.none,
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 6),
+      ],
     );
   }
 
@@ -303,9 +133,9 @@ class DashboardScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: meal.isConsumed ? const Color(0xFF059669).withValues(alpha: 0.2) : Colors.transparent),
+          border: Border.all(color: meal.isConsumed ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2) : Colors.transparent),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
           ],
@@ -333,19 +163,19 @@ class DashboardScreen extends StatelessWidget {
                     tag: 'meal_name_${meal.id}',
                     child: Material(
                       color: Colors.transparent,
-                      child: Text(meal.name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(meal.name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
                     ),
                   ),
                   Text(
-                    '${meal.calories} kcal • ${meal.type.name.capitalize()}',
-                    style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280)),
+                    '${meal.calories} kcal • ${meal.type.name.capitalize()} • ${meal.prepTimeMinutes} min',
+                    style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
             ),
             Checkbox(
               value: meal.isConsumed,
-              activeColor: const Color(0xFF059669),
+              activeColor: Theme.of(context).colorScheme.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               onChanged: (_) => provider.toggleMealConsumed(meal.id),
             ),
@@ -382,6 +212,97 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildSmartRecommendations(BuildContext context, UserProvider userProvider) {
+    try {
+      final allMeals = PersistenceService.getAllTemplates();
+      final mealTypeToShow = _getNextMealType();
+
+      final recommendations = RecommendationGenerator.generateRecommendations(
+        meals: allMeals,
+        proteinConsumed: userProvider.totalConsumedProtein,
+        proteinTarget: (userProvider.tdee * 0.3) / 4,
+        carbsConsumed: userProvider.totalConsumedCarbs,
+        carbsTarget: (userProvider.tdee * 0.4) / 4,
+        fatConsumed: userProvider.totalConsumedFat,
+        fatTarget: (userProvider.tdee * 0.3) / 9,
+        conditions: userProvider.user?.conditions ?? [],
+        mealType: mealTypeToShow,
+        userId: userProvider.user?.name,
+        maxRecommendations: 2,
+      );
+
+      if (recommendations.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recommended For You',
+                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${mealTypeToShow.name.capitalize()} 🎯',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...recommendations.map((entry) {
+            final confidence = RecommendationGenerator.calculateConfidenceScore(entry.value);
+            return SmartMealCard(
+              meal: entry.key,
+              reasons: entry.value,
+              confidenceScore: confidence,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MealDetailScreen(meal: entry.key),
+                  ),
+                );
+              },
+              onAddMeal: () {
+                userProvider.addCustomMeal(entry.key);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${entry.key.name} added to your plan!'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ],
+      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1);
+    } catch (e) {
+      return const SizedBox.shrink();
+    }
+  }
+
+  MealType _getNextMealType() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return MealType.breakfast;
+    if (hour < 17) return MealType.lunch;
+    return MealType.dinner;
   }
 
   IconData _getMealIcon(MealType type) {

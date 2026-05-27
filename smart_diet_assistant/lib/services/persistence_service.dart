@@ -1,10 +1,97 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
 import '../models/gamification_model.dart';
+import '../hive/entities/ingredient_entity.dart';
+import '../hive/entities/meal_template_entity.dart';
+import '../hive/entities/day_plan_entity.dart';
+import '../hive/entities/meal_memory_entity.dart';
+import '../hive/entities/user_meal_preference_entity.dart';
 
 class PersistenceService {
+  static Box<IngredientEntity>? _ingredientsBox;
+  static Box<MealTemplateEntity>? _templatesBox;
+  static Box<DayPlanEntity>? _dayPlansBox;
+  static Box<MealMemoryEntity>? _mealMemoryBox;
+  static Box<UserMealPreferenceEntity>? _preferencesBox;
+
+  static Future<void> initHive() async {
+    _ingredientsBox = await Hive.openBox<IngredientEntity>('ingredients');
+    _templatesBox = await Hive.openBox<MealTemplateEntity>('meal_templates');
+    _dayPlansBox = await Hive.openBox<DayPlanEntity>('day_plans');
+    _mealMemoryBox = await Hive.openBox<MealMemoryEntity>('meal_memory');
+    _preferencesBox = await Hive.openBox<UserMealPreferenceEntity>('user_preferences');
+  }
+
+  static Future<void> saveDayPlan(DayPlanEntity plan) async {
+    await _dayPlansBox?.put(plan.id, plan);
+  }
+
+  static DayPlanEntity? getDayPlan(String id) {
+    return _dayPlansBox?.get(id);
+  }
+
+  static Future<void> saveMealTemplate(MealTemplateEntity template) async {
+    await _templatesBox?.put(template.id, template);
+  }
+
+  static Future<void> saveMealMemory(
+    MealMemoryEntity memory,
+) async {
+  await _mealMemoryBox?.put(memory.id, memory);
+}
+
+  static List<MealMemoryEntity> getMealMemories(
+      String userId,
+  ) {
+    return _mealMemoryBox?.values
+            .where((m) => m.userId == userId)
+            .toList() ??
+        [];
+  }
+
+  static Future<void> savePreferences(
+      UserMealPreferenceEntity pref,
+  ) async {
+    await _preferencesBox?.put(pref.userId, pref);
+  }
+
+  static UserMealPreferenceEntity? getPreferences(
+      String userId,
+  ) {
+    return _preferencesBox?.get(userId);
+  }
+
+  static List<MealTemplateEntity> getAllTemplates() {
+    return _templatesBox?.values.toList() ?? [];
+  }
+
+  static Future<void> saveIngredient(IngredientEntity ingredient) async {
+    await _ingredientsBox?.put(ingredient.id, ingredient);
+  }
+
+  static List<IngredientEntity> getAllIngredients() {
+    return _ingredientsBox?.values.toList() ?? [];
+  }
+
+  static Future<void> saveAllIngredients(List<IngredientEntity> ingredients) async {
+    final Map<String, IngredientEntity> map = {};
+    for (var i in ingredients) {
+      map[i.id] = i;
+    }
+    await _ingredientsBox?.putAll(map);
+  }
+
+  static Future<void> saveAllTemplates(List<MealTemplateEntity> templates) async {
+    final Map<String, MealTemplateEntity> map = {};
+    for (var t in templates) {
+      map[t.id] = t;
+    }
+    await _templatesBox?.putAll(map);
+  }
+
   static const String _keyUser = 'user_data';
   static const String _keyMeals = 'meal_plan';
 
@@ -137,6 +224,38 @@ class PersistenceService {
   static Future<int> getFastingReminderOffset() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyFastingReminderOffset) ?? 0; // Default: at time of end
+  }
+
+  static String _customMealsKey(String dateStr) => 'custom_meals_$dateStr';
+
+  static Future<void> saveCustomMealsForDate(
+    String dateStr,
+    List<MealModel> meals,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final mealList = meals.map((m) => m.toMap()).toList();
+    await prefs.setString(_customMealsKey(dateStr), jsonEncode(mealList));
+  }
+
+  static Future<List<MealModel>> getCustomMealsForDate(String dateStr) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_customMealsKey(dateStr));
+    if (data == null) return [];
+
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((m) => MealModel.fromMap(m)).toList();
+  }
+
+  static const String _keyHydrationReminders = 'hydration_reminders_enabled';
+
+  static Future<void> saveHydrationRemindersEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHydrationReminders, enabled);
+  }
+
+  static Future<bool> getHydrationRemindersEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHydrationReminders) ?? true;
   }
 
   static Future<void> clearAll() async {

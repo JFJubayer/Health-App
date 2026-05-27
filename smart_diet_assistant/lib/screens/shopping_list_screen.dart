@@ -18,13 +18,13 @@ class ShoppingListScreen extends StatelessWidget {
     final completed = shoppingList.where((item) => checkedItems.contains(item)).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Shopping List',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1F2937)),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         actions: [
           if (checkedItems.isNotEmpty)
@@ -43,12 +43,12 @@ class ShoppingListScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               children: [
                 if (toBuy.isNotEmpty) ...[
-                  _buildSectionHeader('To Buy', toBuy.length),
+                  _buildSectionHeader(context, 'To Buy', toBuy.length),
                   ...toBuy.map((item) => _buildShoppingItem(context, provider, item, false)),
                 ],
                 if (completed.isNotEmpty) ...[
                   const SizedBox(height: 24),
-                  _buildSectionHeader('Completed', completed.length),
+                  _buildSectionHeader(context, 'Completed', completed.length),
                   ...completed.map((item) => _buildShoppingItem(context, provider, item, true)),
                 ],
                 const SizedBox(height: 40),
@@ -57,7 +57,7 @@ class ShoppingListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, int count) {
+  Widget _buildSectionHeader(BuildContext context, String title, int count) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, top: 8),
       child: Row(
@@ -67,7 +67,7 @@ class ShoppingListScreen extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF1F2937),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(width: 8),
@@ -79,7 +79,7 @@ class ShoppingListScreen extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF6B7280)),
+              style: GoogleFonts.outfit(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -92,7 +92,7 @@ class ShoppingListScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -106,13 +106,13 @@ class ShoppingListScreen extends StatelessWidget {
         value: isChecked,
         onChanged: (_) => provider.toggleIngredient(item),
         controlAffinity: ListTileControlAffinity.leading,
-        activeColor: const Color(0xFF059669),
+        activeColor: Theme.of(context).colorScheme.primary,
         checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         title: Text(
           item,
           style: GoogleFonts.outfit(
             fontSize: 16,
-            color: isChecked ? Colors.grey : const Color(0xFF1F2937),
+            color: isChecked ? Colors.grey : Theme.of(context).colorScheme.onSurface,
             decoration: isChecked ? TextDecoration.lineThrough : null,
           ),
         ),

@@ -124,11 +124,11 @@ class _AddMealScreenState extends State<AddMealScreen> {
     const emerald = Color(0xFF059669);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Smart Meal Builder', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -173,8 +173,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1F2937))),
-        Text(subtitle, style: GoogleFonts.outfit(fontSize: 14, color: const Color(0xFF6B7280))),
+        Text(title, style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+        Text(subtitle, style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ],
     );
   }
@@ -190,14 +190,14 @@ class _AddMealScreenState extends State<AddMealScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF059669) : const Color(0xFFF3F4F6),
+                color: isSelected ? Theme.of(context).colorScheme.primary : (Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
                   type.name.toUpperCase(),
                   style: GoogleFonts.outfit(
-                    color: isSelected ? Colors.white : const Color(0xFF6B7280),
+                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -225,7 +225,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
             hintText: 'Search chicken, rice, eggs...',
             prefixIcon: Icon(Icons.search, color: emerald),
             filled: true,
-            fillColor: const Color(0xFFF9FAFB),
+            fillColor: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         );
@@ -268,7 +268,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
       ),
@@ -342,7 +342,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   Widget _buildLabel(String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(label, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF374151))),
+      child: Text(label, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
     );
   }
 
@@ -352,7 +352,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
       decoration: InputDecoration(
         hintText: 'Enter a name for this meal',
         filled: true,
-        fillColor: const Color(0xFFF9FAFB),
+        fillColor: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       ),
       validator: (val) => val == null || val.isEmpty ? 'Please enter a name' : null,
