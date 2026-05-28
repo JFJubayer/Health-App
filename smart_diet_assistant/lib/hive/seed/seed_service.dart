@@ -6,18 +6,19 @@ import '../utils/deterministic_id.dart';
 import '../../services/persistence_service.dart';
 
 class SeedService {
+  static const int _currentSeedVersion = 1;
+
   static Future<void> seedIfNeeded() async {
+    final seededVersion = PersistenceService.getSeedVersion();
+    if (seededVersion >= _currentSeedVersion) return;
+
     await _seedIngredients();
     await _seedMealTemplates();
+
+    await PersistenceService.setSeedVersion(_currentSeedVersion);
   }
 
   static Future<void> _seedIngredients() async {
-    final existing = PersistenceService.getAllIngredients();
-
-    if (existing.isNotEmpty) {
-      return;
-    }
-
     final ingredients = [
       IngredientEntity(
         id: DeterministicId.ingredient('Chicken Breast'),
@@ -240,12 +241,6 @@ class SeedService {
 }
 
   Future<void> _seedMealTemplates() async {
-    final existing = PersistenceService.getAllTemplates();
-
-    if (existing.isNotEmpty) {
-      return;
-    }
-
     final templates = [
       // templates here
       // ─── BREAKFASTS ─────────────────────────────────────

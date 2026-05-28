@@ -42,6 +42,7 @@ class FoodDataService {
         case MealType.breakfast: return 100;
         case MealType.lunch: return 200;
         case MealType.dinner: return 150;
+        case MealType.snack: return 50;
       }
     }
     
@@ -51,6 +52,7 @@ class FoodDataService {
         case MealType.breakfast: return 80;
         case MealType.lunch: return 250;
         case MealType.dinner: return 150;
+        case MealType.snack: return 50;
       }
     }
 

@@ -4,13 +4,35 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 
-class ShoppingListScreen extends StatelessWidget {
+class ShoppingListScreen extends StatefulWidget {
   const ShoppingListScreen({super.key});
+
+  @override
+  State<ShoppingListScreen> createState() => _ShoppingListScreenState();
+}
+
+class _ShoppingListScreenState extends State<ShoppingListScreen> {
+  bool _isWeekly = false;
+  List<String> _weeklyList = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeeklyList();
+  }
+
+  Future<void> _loadWeeklyList() async {
+    setState(() => _isLoading = true);
+    final provider = Provider.of<UserProvider>(context, listen: false);
+    _weeklyList = await provider.getWeeklyShoppingList();
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<UserProvider>(context);
-    final shoppingList = provider.shoppingList;
+    final shoppingList = _isWeekly ? _weeklyList : provider.shoppingList;
     final checkedItems = provider.checkedIngredients;
 
     // Filter list into to-buy and completed
@@ -37,23 +59,62 @@ class ShoppingListScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: shoppingList.isEmpty
-          ? _buildEmptyState()
-          : ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (toBuy.isNotEmpty) ...[
-                  _buildSectionHeader(context, 'To Buy', toBuy.length),
-                  ...toBuy.map((item) => _buildShoppingItem(context, provider, item, false)),
-                ],
-                if (completed.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(context, 'Completed', completed.length),
-                  ...completed.map((item) => _buildShoppingItem(context, provider, item, true)),
-                ],
-                const SizedBox(height: 40),
+                Expanded(
+                  child: SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('Today'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('This Week'),
+                      ),
+                    ],
+                    selected: {_isWeekly},
+                    onSelectionChanged: (Set<bool> newSelection) {
+                      setState(() {
+                        _isWeekly = newSelection.first;
+                      });
+                      if (_isWeekly && _weeklyList.isEmpty) {
+                        _loadWeeklyList();
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
+          ),
+          Expanded(
+            child: _isLoading && _isWeekly
+                ? const Center(child: CircularProgressIndicator())
+                : shoppingList.isEmpty
+                    ? _buildEmptyState()
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        children: [
+                          if (toBuy.isNotEmpty) ...[
+                            _buildSectionHeader(context, 'To Buy', toBuy.length),
+                            ...toBuy.map((item) => _buildShoppingItem(context, provider, item, false)),
+                          ],
+                          if (completed.isNotEmpty) ...[
+                            const SizedBox(height: 24),
+                            _buildSectionHeader(context, 'Completed', completed.length),
+                            ...completed.map((item) => _buildShoppingItem(context, provider, item, true)),
+                          ],
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+          ),
+        ],
+      ),
     );
   }
 

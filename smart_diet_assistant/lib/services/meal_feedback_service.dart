@@ -97,9 +97,37 @@ class MealFeedbackService {
 
 
   Future<void> recordMealSwap({required String oldMealId,required String newMealId,}) async {
+    await MealMemoryService.logMeal(
+      mealId: oldMealId,
+      consumed: false,
+      wasSwapped: true,
+    );
     await _penalizeMeal(oldMealId);
-
     await _updateMealRating(newMealId,4.0,);   
+  }
+
+  Future<void> addToAvoidedMeals(String mealId) async {
+    final prefs = await _getOrCreatePreferences();
+    if (!prefs.avoidedMealIds.contains(mealId)) {
+      prefs.avoidedMealIds.add(mealId);
+      prefs.lastUpdated = DateTime.now();
+      await PersistenceService.savePreferences(prefs);
+    }
+  }
+
+  Future<void> addPreferredTags(List<String> tags) async {
+    final prefs = await _getOrCreatePreferences();
+    bool updated = false;
+    for (var tag in tags) {
+      if (!prefs.preferredTags.contains(tag)) {
+        prefs.preferredTags.add(tag);
+        updated = true;
+      }
+    }
+    if (updated) {
+      prefs.lastUpdated = DateTime.now();
+      await PersistenceService.savePreferences(prefs);
+    }
   }
 
 }

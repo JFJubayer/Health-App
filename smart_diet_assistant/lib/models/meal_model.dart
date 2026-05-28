@@ -11,7 +11,10 @@ enum MealType {
   lunch,
   
   @HiveField(2)
-  dinner
+  dinner,
+  
+  @HiveField(3)
+  snack
 }
 
 class MealModel {
@@ -28,6 +31,7 @@ class MealModel {
   final List<Map<String, dynamic>> components; // Added for structured meal building
   final String? imageUrl;
   final int prepTimeMinutes;
+  final List<String>? tags;
   bool isConsumed;
 
   MealModel({
@@ -43,6 +47,7 @@ class MealModel {
     this.recipeSteps = const [],
     this.components = const [],
     this.imageUrl,
+    this.tags = const [],
     this.prepTimeMinutes = 15,
     this.isConsumed = false,
   });
@@ -61,6 +66,7 @@ class MealModel {
       'recipeSteps': recipeSteps,
       'components': components,
       'imageUrl': imageUrl,
+      'tags': tags,
       'prepTimeMinutes': prepTimeMinutes,
       'isConsumed': isConsumed,
     };
@@ -80,6 +86,7 @@ class MealModel {
       recipeSteps: List<String>.from(map['recipeSteps'] ?? []),
       components: List<Map<String, dynamic>>.from(map['components'] ?? []),
       imageUrl: map['imageUrl'],
+      tags: List<String>.from(map['tags'] ?? []),
       prepTimeMinutes: map['prepTimeMinutes']?.toInt() ?? 15,
       isConsumed: map['isConsumed'] ?? false,
     );

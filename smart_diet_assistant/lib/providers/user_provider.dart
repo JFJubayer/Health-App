@@ -9,6 +9,7 @@ import '../services/meal_feedback_service.dart';
 import '../models/gamification_model.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
+import '../services/weekly_plan_service.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -62,6 +63,31 @@ class UserProvider with ChangeNotifier {
     final ingredients = <String>{};
     for (var meal in _mealPlan) {
       ingredients.addAll(meal.ingredients);
+    }
+    return ingredients.toList();
+  }
+
+  Future<List<String>> getWeeklyShoppingList() async {
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1));
+    final weekPlans = await getWeeklyPlans(weekStart);
+    final ingredients = <String>{};
+    
+    for (var plan in weekPlans) {
+      void addIng(String? id) {
+        if (id != null) {
+          final meal = resolveMealById(id);
+          if (meal != null) {
+            ingredients.addAll(meal.ingredients);
+          }
+        }
+      }
+      addIng(plan.breakfastId);
+      addIng(plan.lunchId);
+      addIng(plan.dinnerId);
+      for (var snackId in plan.snackIds) {
+        addIng(snackId);
+      }
     }
     return ingredients.toList();
   }
@@ -138,6 +164,8 @@ class UserProvider with ChangeNotifier {
         return _tdee * 0.4;
       case MealType.dinner:
         return _tdee * 0.3;
+      case MealType.snack:
+        return _tdee * 0.15;
     }
   }
 
@@ -432,7 +460,7 @@ class UserProvider with ChangeNotifier {
     return templates.map(DietService.resolveMealModel).toList();
   }
 
-  void replaceMeal(String mealId, {String? selectedTemplateId}) async {
+  Future<void> replaceMeal(String mealId, {String? selectedTemplateId}) async {
     if (_currentDayPlan == null || _mealPlan.isEmpty) return;
     if (!isMainPlanMeal(mealId)) return;
 
@@ -475,6 +503,19 @@ class UserProvider with ChangeNotifier {
 
     await PersistenceService.saveDayPlan(_currentDayPlan!);
     _buildMealPlanFromDayPlan();
+  }
+
+  Future<void> avoidMeal(String mealId) async {
+    await _mealFeedback.addToAvoidedMeals(mealId);
+    if (isMainPlanMeal(mealId)) {
+      await replaceMeal(mealId);
+    } else {
+      deleteMeal(mealId);
+    }
+  }
+
+  Future<void> addMealTags(List<String> tags) async {
+    await _mealFeedback.addPreferredTags(tags);
   }
 
   void toggleMealConsumed(String mealId) {
@@ -586,6 +627,42 @@ class UserProvider with ChangeNotifier {
     await PersistenceService.saveDayPlan(_currentDayPlan!);
     await _persistCustomMeals();
     _buildMealPlanFromDayPlan();
+  }
+
+  Future<List<DayPlanEntity>> getWeeklyPlans(DateTime weekStart) async {
+    if (_user == null) return [];
+    return await WeeklyPlanService.generateWeek(weekStart, _user!, _tdee);
+  }
+
+  Future<void> regenerateUnlockedSlots(DateTime weekStart) async {
+    // Generate week will automatically fill in null (unlocked) slots
+    await getWeeklyPlans(weekStart);
+    // Also regenerate today's plan if today is in the week
+    await _initialLoad(); 
+  }
+
+  Future<void> updateDayPlan(DayPlanEntity plan) async {
+    await PersistenceService.saveDayPlan(plan);
+    if (plan.date.toIso8601String().substring(0, 10) == _todayDateStr) {
+      _currentDayPlan = plan;
+      _buildMealPlanFromDayPlan();
+    }
+  }
+
+  MealModel? resolveMealById(String id) {
+    // check custom cache first
+    try {
+      return _customMealsCache.firstWhere((m) => m.id == id);
+    } catch (_) {}
+
+    // check all templates
+    final templates = PersistenceService.getAllTemplates();
+    try {
+      final template = templates.firstWhere((t) => t.id == id);
+      return DietService.resolveMealModel(template);
+    } catch (_) {
+      return null;
+    }
   }
   
   void clearUser() {

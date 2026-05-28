@@ -31,7 +31,6 @@ class EnhancedEnergyRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = (consumed / target).clamp(0.0, 1.0);
-    final proteinProgress = (proteinConsumed / proteinTarget).clamp(0.0, 1.0);
     final warning = MacroCalculator.getMacroImbalanceWarning(
       proteinConsumed: proteinConsumed,
       proteinTarget: proteinTarget,

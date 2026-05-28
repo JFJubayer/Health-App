@@ -21,13 +21,14 @@ class MealTemplateEntityAdapter extends TypeAdapter<MealTemplateEntity> {
       name: fields[1] as String,
       type: fields[2] as MealType,
       ingredients: (fields[3] as List).cast<IngredientPortion>(),
-      tags: (fields[4] as List).cast<String>(),
-      conditions: (fields[5] as List).cast<String>(),
+      tags: fields[4] == null ? [] : (fields[4] as List).cast<String>(),
+      conditions: fields[5] == null ? [] : (fields[5] as List).cast<String>(),
       prepTimeMinutes: fields[6] as int,
       rating: fields[7] as double,
       timesUsed: fields[8] as int,
-      isCustom: fields[9] as bool,
-      recipeSteps: (fields[10] as List).cast<String>(),
+      isCustom: fields[9] == null ? false : fields[9] as bool,
+      recipeSteps:
+          fields[10] == null ? [] : (fields[10] as List).cast<String>(),
       instructions: fields[11] as String,
       imageUrl: fields[12] as String?,
     );

@@ -8,6 +8,7 @@ class MealMemoryService {
     required String mealId,
     required bool consumed,
     double satisfaction = 0,
+    bool wasSwapped = false,
     String? notes,
   }) async {
     final now = DateTime.now();
@@ -23,6 +24,7 @@ class MealMemoryService {
       notes: notes,
       satisfaction: satisfaction,
       wasConsumed: consumed,
+      wasSwapped: wasSwapped,
     );
 
     await PersistenceService.saveMealMemory(memory);
@@ -53,5 +55,22 @@ class MealMemoryService {
         .map((m) => m.mealTemplateId)
         .toSet()
         .toList();
+  }
+
+  static DateTime? getLastServedDate(String mealId) {
+    final memories = PersistenceService.getMealMemories(localUserId);
+    final mealMemories = memories.where((m) => m.mealTemplateId == mealId).toList();
+    if (mealMemories.isEmpty) return null;
+    mealMemories.sort((a, b) => b.consumedAt.compareTo(a.consumedAt));
+    return mealMemories.first.consumedAt;
+  }
+
+  static double getSwapRate(String mealId) {
+    final memories = PersistenceService.getMealMemories(localUserId);
+    final mealMemories = memories.where((m) => m.mealTemplateId == mealId).toList();
+    if (mealMemories.isEmpty) return 0.0;
+    
+    final swappedCount = mealMemories.where((m) => m.wasSwapped).length;
+    return swappedCount / mealMemories.length;
   }
 }

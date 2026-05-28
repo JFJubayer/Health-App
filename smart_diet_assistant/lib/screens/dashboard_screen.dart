@@ -96,29 +96,6 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetabolicSummary(BuildContext context, UserProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Chip(
-              label: Text(
-                provider.calorieTier,
-                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              side: BorderSide.none,
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-      ],
-    );
-  }
-
   Widget _buildMealListCard(BuildContext context, UserProvider provider, MealModel meal) {
     return GestureDetector(
       onTap: () {
@@ -177,7 +154,16 @@ class DashboardScreen extends StatelessWidget {
               value: meal.isConsumed,
               activeColor: Theme.of(context).colorScheme.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              onChanged: (_) => provider.toggleMealConsumed(meal.id),
+              onChanged: (_) async {
+                if (meal.isConsumed) {
+                   provider.toggleMealConsumed(meal.id);
+                } else {
+                   await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: 4.0);
+                   if (context.mounted) {
+                      _showFeedbackSnackbar(context, provider, meal);
+                   }
+                }
+              },
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
@@ -208,6 +194,58 @@ class DashboardScreen extends StatelessWidget {
               Navigator.pop(context);
             },
             child: Text('Delete', style: GoogleFonts.outfit(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeedbackSnackbar(BuildContext context, UserProvider provider, MealModel meal) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text('How was ${meal.name}?'),
+            const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.thumb_up, color: Colors.green),
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                provider.addMealTags(meal.tags ?? []);
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.thumb_down, color: Colors.red),
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                _showAvoidMealDialog(context, provider, meal);
+              },
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showAvoidMealDialog(BuildContext context, UserProvider provider, MealModel meal) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Avoid this meal?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Text('Would you like us to never show "${meal.name}" again?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              provider.avoidMeal(meal.id);
+              Navigator.pop(context);
+            },
+            child: Text('Never Show Again', style: GoogleFonts.outfit(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -290,7 +328,7 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
             );
-          }).toList(),
+          }),
         ],
       ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1);
     } catch (e) {
@@ -310,6 +348,7 @@ class DashboardScreen extends StatelessWidget {
       case MealType.breakfast: return Icons.wb_sunny_rounded;
       case MealType.lunch: return Icons.fastfood_rounded;
       case MealType.dinner: return Icons.nightlight_round;
+      case MealType.snack: return Icons.apple_rounded;
     }
   }
 
@@ -318,6 +357,7 @@ class DashboardScreen extends StatelessWidget {
       case MealType.breakfast: return Colors.orange;
       case MealType.lunch: return Colors.green;
       case MealType.dinner: return Colors.indigo;
+      case MealType.snack: return Colors.teal;
     }
   }
 }

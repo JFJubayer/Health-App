@@ -7,6 +7,7 @@ import '../models/meal_model.dart';
 import '../services/export_service.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/meal_picker_sheet.dart';
+import 'weekly_plan_screen.dart';
 
 class MealsScreen extends StatelessWidget {
   const MealsScreen({super.key});
@@ -30,6 +31,11 @@ class MealsScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
+            tooltip: 'Weekly Plan',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WeeklyPlanScreen())),
+          ),
           IconButton(
             icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.primary),
             tooltip: 'Regenerate Plan',
@@ -163,6 +169,7 @@ class MealsScreen extends StatelessWidget {
       case MealType.breakfast: return Icons.wb_sunny_rounded;
       case MealType.lunch: return Icons.fastfood_rounded;
       case MealType.dinner: return Icons.nightlight_round;
+      case MealType.snack: return Icons.apple_rounded;
     }
   }
 
@@ -171,6 +178,7 @@ class MealsScreen extends StatelessWidget {
       case MealType.breakfast: return Colors.orange;
       case MealType.lunch: return Colors.green;
       case MealType.dinner: return Colors.indigo;
+      case MealType.snack: return Colors.teal;
     }
   }
 }
