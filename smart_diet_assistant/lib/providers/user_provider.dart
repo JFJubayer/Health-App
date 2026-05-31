@@ -445,12 +445,9 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<List<MealModel>> getMealAlternativesFor(String mealId) async {
-    if (_mealPlan.isEmpty) return [];
+    final currentMeal = resolveMealById(mealId);
+    if (currentMeal == null) return [];
 
-    final currentMeal = _mealPlan.firstWhere(
-      (m) => m.id == mealId,
-      orElse: () => _mealPlan.first,
-    );
     final templates = await DietService.getMealAlternatives(
       currentMeal.type,
       _targetCaloriesForMealType(currentMeal.type),
@@ -461,13 +458,12 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> replaceMeal(String mealId, {String? selectedTemplateId}) async {
-    if (_currentDayPlan == null || _mealPlan.isEmpty) return;
+    if (_currentDayPlan == null) return;
     if (!isMainPlanMeal(mealId)) return;
 
-    final currentMeal = _mealPlan.firstWhere(
-      (m) => m.id == mealId,
-      orElse: () => _mealPlan.first,
-    );
+    final currentMeal = resolveMealById(mealId);
+    if (currentMeal == null) return;
+
 
     MealTemplateEntity altTemplate;
     if (selectedTemplateId != null) {
