@@ -9,6 +9,7 @@ import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_memory_entity.dart';
 import '../hive/entities/user_meal_preference_entity.dart';
+import '../models/shopping_item.dart';
 
 class PersistenceService {
   static Box<IngredientEntity>? _ingredientsBox;
@@ -280,5 +281,22 @@ class PersistenceService {
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  static const String _keyCustomShoppingItems = 'custom_shopping_items';
+
+  static Future<void> saveCustomShoppingItems(List<ShoppingItem> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final itemList = items.map((i) => i.toMap()).toList();
+    await prefs.setString(_keyCustomShoppingItems, jsonEncode(itemList));
+  }
+
+  static Future<List<ShoppingItem>> getCustomShoppingItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_keyCustomShoppingItems);
+    if (data == null) return [];
+
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((m) => ShoppingItem.fromMap(m)).toList();
   }
 }

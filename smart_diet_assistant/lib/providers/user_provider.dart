@@ -10,6 +10,7 @@ import '../models/gamification_model.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../services/weekly_plan_service.dart';
+import '../models/shopping_item.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -21,6 +22,7 @@ class UserProvider with ChangeNotifier {
   int _waterIntake = 0;
   int _waterGoal = 2500; // Default
   Set<String> _checkedIngredients = {};
+  List<ShoppingItem> _customShoppingItems = [];
   
   int _fastingDurationHours = 16;
   DateTime? _fastingStartTime;
@@ -48,6 +50,7 @@ class UserProvider with ChangeNotifier {
   bool get isFasting => _fastingStartTime != null;
   GamificationModel get gamification => _gamification;
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
+  List<ShoppingItem> get customShoppingItems => _customShoppingItems;
 
   String get _todayDateStr =>
       DateTime.now().toIso8601String().substring(0, 10);
@@ -96,6 +99,18 @@ class UserProvider with ChangeNotifier {
   double get totalConsumedProtein => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.protein);
   double get totalConsumedCarbs => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.carbs);
   double get totalConsumedFat => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.fat);
+
+  void addCustomShoppingItem(ShoppingItem item) {
+    _customShoppingItems.add(item);
+    PersistenceService.saveCustomShoppingItems(_customShoppingItems);
+    notifyListeners();
+  }
+
+  void removeCustomShoppingItem(String id) {
+    _customShoppingItems.removeWhere((i) => i.id == id);
+    PersistenceService.saveCustomShoppingItems(_customShoppingItems);
+    notifyListeners();
+  }
 
   UserProvider() {
     _initialLoad();
@@ -197,6 +212,7 @@ class UserProvider with ChangeNotifier {
         
         debugPrint('UserProvider: Loading checked ingredients...');
         _checkedIngredients = await PersistenceService.getCheckedIngredients();
+        _customShoppingItems = await PersistenceService.getCustomShoppingItems();
         
         debugPrint('UserProvider: Loading fasting data...');
         _fastingDurationHours = await PersistenceService.getFastingDuration();
@@ -628,6 +644,23 @@ class UserProvider with ChangeNotifier {
   Future<List<DayPlanEntity>> getWeeklyPlans(DateTime weekStart) async {
     if (_user == null) return [];
     return await WeeklyPlanService.generateWeek(weekStart, _user!, _tdee);
+  }
+
+  Future<List<Map<String, dynamic>>> getCalorieHistory(int days) async {
+    final List<Map<String, dynamic>> result = [];
+    final now = DateTime.now();
+    for (int i = days - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final dateStr = date.toIso8601String().substring(0, 10);
+      
+      final summary = await PersistenceService.getDailySummary(dateStr);
+      result.add({
+        'date': date,
+        'calories': summary != null ? (summary['calories'] as int) : 0,
+        'water': summary != null ? (summary['water'] as int) : 0,
+      });
+    }
+    return result;
   }
 
   Future<void> regenerateUnlockedSlots(DateTime weekStart) async {

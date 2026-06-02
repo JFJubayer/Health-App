@@ -1,5 +1,6 @@
 import '../models/food_item_model.dart';
 import '../models/meal_model.dart';
+import 'persistence_service.dart';
 
 class FoodDataService {
   static const List<FoodItemModel> _foodLibrary = [
@@ -28,9 +29,25 @@ class FoodDataService {
 
   static List<FoodItemModel> getSuggestions(String query) {
     if (query.isEmpty) return [];
-    return _foodLibrary
-        .where((f) => f.name.toLowerCase().contains(query.toLowerCase()))
+    
+    final lowerQuery = query.toLowerCase();
+    final matches = _foodLibrary
+        .where((f) => f.name.toLowerCase().contains(lowerQuery))
         .toList();
+
+    final customIngredients = PersistenceService.getAllIngredients()
+        .where((i) => i.name.toLowerCase().contains(lowerQuery))
+        .map((i) => FoodItemModel(
+              name: i.name,
+              caloriesPer100g: i.caloriesPer100g,
+              proteinPer100g: i.protein,
+              carbsPer100g: i.carbs,
+              fatPer100g: i.fat,
+            ))
+        .toList();
+
+    matches.addAll(customIngredients);
+    return matches;
   }
 
   static double getRecommendedPortion(String name, MealType type) {

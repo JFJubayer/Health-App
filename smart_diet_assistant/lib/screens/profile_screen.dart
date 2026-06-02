@@ -12,6 +12,7 @@ import '../services/persistence_service.dart';
 import '../services/diet_service.dart';
 import '../services/meal_feedback_service.dart';
 import '../widgets/water_goal_dialog.dart';
+import '../widgets/calorie_graph_widget.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -113,6 +114,11 @@ class ProfileScreen extends StatelessWidget {
             _buildMetabolicSection(context, userProvider)
                 .animate()
                 .fadeIn(delay: 225.ms)
+                .slideY(begin: 0.05),
+            const SizedBox(height: 24),
+            CalorieGraphWidget(userProvider: userProvider)
+                .animate()
+                .fadeIn(delay: 235.ms)
                 .slideY(begin: 0.05),
             const SizedBox(height: 24),
             _buildFavoritesSection(context)
