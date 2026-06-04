@@ -18,10 +18,12 @@ class _CalorieGraphWidgetState extends State<CalorieGraphWidget> with SingleTick
   List<Map<String, dynamic>> _weekData = [];
   List<Map<String, dynamic>> _monthData = [];
   bool _isLoading = true;
+  double _touchedValue = -1;
 
   @override
   void initState() {
     super.initState();
+    _touchedValue = -1;
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
@@ -175,136 +177,91 @@ class _CalorieGraphWidgetState extends State<CalorieGraphWidget> with SingleTick
         maxY = (day['calories'] as num).toDouble();
       }
     }
-    // Give 10% padding on top
     maxY = maxY * 1.1;
-    // ensure at least some Y axis if all zeros
     if (maxY == 0) maxY = 2000;
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxY,
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final secondaryColor = Theme.of(context).colorScheme.secondary;
+
+    return LineChart(
+      LineChartData(
         minY: 0,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              return BarTooltipItem(
-                '${rod.toY.round()} kcal\n',
-                GoogleFonts.outfit(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+        maxY: maxY,
+        lineTouchData: LineTouchData(
+          getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+            return spotIndexes.map((spotIndex) {
+              return TouchedSpotIndicatorData(
+                FlLine(
+                  color: primaryColor,
+                  strokeWidth: 4,
                 ),
-                children: [
-                  TextSpan(
-                    text: DateFormat('MMM d').format(data[group.x.toInt()]['date']),
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                FlDotData(
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 8,
+                      color: Colors.white,
+                      strokeWidth: 5,
+                      strokeColor: primaryColor,
+                    );
+                  },
+                ),
               );
+            }).toList();
+          },
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) => primaryColor,
+            getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+              return touchedBarSpots.map((barSpot) {
+                final date = data[barSpot.x.toInt()]['date'] as DateTime;
+                String dateStr = DateFormat('MMM d').format(date);
+                if (isWeek) {
+                  dateStr = DateFormat('E').format(date);
+                }
+
+                return LineTooltipItem(
+                  '$dateStr \n',
+                  GoogleFonts.outfit(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: barSpot.y.round().toString(),
+                      style: GoogleFonts.outfit(
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' kcal',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
             },
           ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= data.length) return const SizedBox.shrink();
-                
-                final date = data[index]['date'] as DateTime;
-                String text = '';
-                
-                if (isWeek) {
-                  text = DateFormat('E').format(date); // Mon, Tue, etc.
-                } else {
-                  // For month, show fewer labels to avoid clutter
-                  if (index % 5 == 0 || index == data.length - 1) {
-                    text = DateFormat('d').format(date);
-                  }
-                }
-                
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    text,
-                    style: GoogleFonts.outfit(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                );
-              },
-              reservedSize: 28,
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value == 0) return const SizedBox.shrink();
-                return Text(
-                  value.toInt().toString(),
-                  style: GoogleFonts.outfit(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 10,
-                  ),
-                );
-              },
-              reservedSize: 36,
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: maxY / 4,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-              strokeWidth: 1,
-            );
+          touchCallback: (FlTouchEvent event, LineTouchResponse? lineTouch) {
+            if (!event.isInterestedForInteractions || lineTouch == null || lineTouch.lineBarSpots == null) {
+              setState(() {
+                _touchedValue = -1;
+              });
+              return;
+            }
+            final value = lineTouch.lineBarSpots![0].x;
+            setState(() {
+              _touchedValue = value;
+            });
           },
         ),
-        borderData: FlBorderData(show: false),
-        barGroups: List.generate(data.length, (index) {
-          final cal = (data[index]['calories'] as num).toDouble();
-          final isToday = index == data.length - 1;
-          
-          return BarChartGroupData(
-            x: index,
-            barRods: [
-              BarChartRodData(
-                toY: cal,
-                color: isToday 
-                    ? Theme.of(context).colorScheme.primary 
-                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                width: isWeek ? 22 : 6,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                backDrawRodData: BackgroundBarChartRodData(
-                  show: true,
-                  toY: maxY,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
-                ),
-              ),
-            ],
-          );
-        }),
         extraLinesData: ExtraLinesData(
           horizontalLines: [
             HorizontalLine(
               y: widget.userProvider.tdee,
               color: Colors.redAccent.withValues(alpha: 0.8),
-              strokeWidth: 1,
+              strokeWidth: 2,
               dashArray: [5, 5],
               label: HorizontalLineLabel(
                 show: true,
@@ -319,6 +276,163 @@ class _CalorieGraphWidgetState extends State<CalorieGraphWidget> with SingleTick
               ),
             ),
           ],
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            isStepLineChart: true,
+            spots: List.generate(data.length, (index) {
+              return FlSpot(index.toDouble(), (data[index]['calories'] as num).toDouble());
+            }),
+            isCurved: false,
+            barWidth: 4,
+            color: primaryColor,
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  primaryColor.withValues(alpha: 0.5),
+                  primaryColor.withValues(alpha: 0),
+                ],
+                stops: const [0.5, 1.0],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              spotsLine: BarAreaSpotsLine(
+                show: true,
+                flLineStyle: FlLine(
+                  color: primaryColor.withValues(alpha: 0.2),
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) {
+                return FlDotCirclePainter(
+                  radius: 4,
+                  color: Colors.white,
+                  strokeWidth: 2,
+                  strokeColor: primaryColor.withValues(alpha: 0.5),
+                );
+              },
+            ),
+          ),
+        ],
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawHorizontalLine: true,
+          drawVerticalLine: true,
+          horizontalInterval: maxY / 4,
+          verticalInterval: 1,
+          getDrawingHorizontalLine: (value) {
+            if (value == 0) {
+              return FlLine(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                strokeWidth: 2,
+              );
+            }
+            return FlLine(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              strokeWidth: 0.5,
+            );
+          },
+          getDrawingVerticalLine: (value) {
+            if (value == 0) {
+              return FlLine(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                strokeWidth: 2,
+              );
+            }
+            return FlLine(
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              strokeWidth: 0.5,
+            );
+          },
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                if (value == 0 || value % 1 != 0) return const SizedBox.shrink();
+                // show in k if >= 1000
+                String text;
+                if (value >= 1000) {
+                  text = '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
+                } else {
+                  text = value.toInt().toString();
+                }
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 6,
+                  fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
+                  child: Text(
+                    text,
+                    style: GoogleFonts.outfit(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      fontSize: 10,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= data.length) return const SizedBox.shrink();
+
+                final isTouched = index == _touchedValue;
+                final date = data[index]['date'] as DateTime;
+                String text = '';
+
+                if (isWeek) {
+                  text = DateFormat('E').format(date);
+                } else {
+                  if (index % 5 == 0 || index == data.length - 1) {
+                    text = DateFormat('d').format(date);
+                  }
+                }
+
+                if (text.isEmpty) return const SizedBox.shrink();
+
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 4,
+                  fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
+                  child: Text(
+                    text,
+                    style: GoogleFonts.outfit(
+                      color: isTouched
+                          ? primaryColor
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: isTouched ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 11,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
