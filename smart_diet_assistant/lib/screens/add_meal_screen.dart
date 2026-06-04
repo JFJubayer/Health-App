@@ -162,6 +162,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
                           context,
                           MaterialPageRoute(builder: (context) => const AddIngredientScreen()),
                         );
+                        if (!context.mounted) return;
                         if (newFood != null) {
                            _addComponent(newFood);
                            // Force the autocomplete to refresh or close

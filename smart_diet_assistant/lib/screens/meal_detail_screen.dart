@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/meal_model.dart';
 import '../providers/user_provider.dart';
 import '../widgets/meal_picker_sheet.dart';
+import '../widgets/meal_rating_sheet.dart';
 
 class MealDetailScreen extends StatefulWidget {
   final MealModel meal;
@@ -16,7 +17,6 @@ class MealDetailScreen extends StatefulWidget {
 }
 
 class _MealDetailScreenState extends State<MealDetailScreen> {
-  int _satisfactionRating = 4;
 
   MealModel get meal => widget.meal;
 
@@ -54,44 +54,26 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!meal.isConsumed) ...[
-              Text(
-                'How was this meal?',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  final starIndex = index + 1;
-                  return IconButton(
-                    onPressed: () =>
-                        setState(() => _satisfactionRating = starIndex),
-                    icon: Icon(
-                      starIndex <= _satisfactionRating
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 8),
-            ],
             ElevatedButton.icon(
               onPressed: () async {
                 if (meal.isConsumed) {
                   provider.toggleMealConsumed(meal.id);
+                  if (context.mounted) Navigator.pop(context);
                 } else {
-                  await provider.toggleMealConsumedWithFeedback(
-                    meal.id,
-                    satisfaction: _satisfactionRating.toDouble(),
-                  );
+                  final rating = await showMealRatingSheet(context, meal);
+                  if (rating != null) {
+                    await provider.toggleMealConsumedWithFeedback(
+                      meal.id,
+                      satisfaction: rating,
+                    );
+                  } else {
+                    await provider.toggleMealConsumedWithFeedback(
+                      meal.id,
+                      satisfaction: 4.0,
+                    );
+                  }
+                  if (context.mounted) Navigator.pop(context);
                 }
-                if (context.mounted) Navigator.pop(context);
               },
               icon: Icon(
                 meal.isConsumed ? Icons.undo : Icons.check_circle_outline,

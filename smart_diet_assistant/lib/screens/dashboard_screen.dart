@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
+import '../widgets/meal_rating_sheet.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
@@ -158,9 +159,11 @@ class DashboardScreen extends StatelessWidget {
                 if (meal.isConsumed) {
                    provider.toggleMealConsumed(meal.id);
                 } else {
-                   await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: 4.0);
-                   if (context.mounted) {
-                      _showFeedbackSnackbar(context, provider, meal);
+                   final rating = await showMealRatingSheet(context, meal);
+                   if (rating != null) {
+                      await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: rating);
+                   } else {
+                      await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: 4.0);
                    }
                 }
               },
@@ -200,57 +203,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showFeedbackSnackbar(BuildContext context, UserProvider provider, MealModel meal) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Text('How was ${meal.name}?'),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.thumb_up, color: Colors.green),
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                provider.addMealTags(meal.tags ?? []);
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.thumb_down, color: Colors.red),
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                _showAvoidMealDialog(context, provider, meal);
-              },
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 4),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
-  void _showAvoidMealDialog(BuildContext context, UserProvider provider, MealModel meal) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Avoid this meal?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        content: Text('Would you like us to never show "${meal.name}" again?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              provider.avoidMeal(meal.id);
-              Navigator.pop(context);
-            },
-            child: Text('Never Show Again', style: GoogleFonts.outfit(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildSmartRecommendations(BuildContext context, UserProvider userProvider) {
     try {

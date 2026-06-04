@@ -270,7 +270,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     showMealPickerSheet(
       context,
       currentMealId,
-      popRouteOnSelect: true,
+      popRouteOnSelect: false,
       onMealSelected: (newMealId) async {
          final provider = Provider.of<UserProvider>(context, listen: false);
          switch (type) {
