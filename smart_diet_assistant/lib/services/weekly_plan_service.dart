@@ -51,7 +51,7 @@ class WeeklyPlanService {
       final isPastDay = currentDay.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
       dayPlan ??= DayPlanEntity(
-        id: 'plan_$dateStr',
+        id: dateStr,
         date: currentDay,
       );
 
