@@ -594,7 +594,7 @@ class ProfileScreen extends StatelessWidget {
                 title: Text('Daily Water Goal', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
                 subtitle: Text('${userProvider.waterGoal} ml', style: GoogleFonts.outfit(fontSize: 13)),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => showWaterGoalDialog(context),
+                onTap: () => showWaterGoalSheet(context),
               ),
               ListTile(
                 leading: Container(
