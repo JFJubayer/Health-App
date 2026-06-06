@@ -6,11 +6,13 @@ import '../services/diet_service.dart';
 import '../services/persistence_service.dart';
 import '../services/notification_service.dart';
 import '../services/meal_feedback_service.dart';
+import '../services/meal_selector_service.dart';
 import '../models/gamification_model.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../services/weekly_plan_service.dart';
 import '../models/shopping_item.dart';
+import '../models/macro_targets.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -457,7 +459,42 @@ class UserProvider with ChangeNotifier {
   }
 
   void regenerateMeals() async {
-    await _generateAndSetNewPlan();
+    if (_currentDayPlan != null) {
+      bool needsSave = false;
+      final templates = PersistenceService.getAllTemplates();
+      final ingredientsMap = { for (var i in PersistenceService.getAllIngredients()) i.id: i };
+      final selector = MealSelectorService(allMeals: templates, ingredients: ingredientsMap);
+      final macros = MacroTargets.balanced(_tdee);
+
+      if (!_currentDayPlan!.breakfastLocked) {
+         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
+         if (options.isNotEmpty) {
+           _currentDayPlan!.breakfastId = options.first.id;
+           needsSave = true;
+         }
+      }
+      if (!_currentDayPlan!.lunchLocked) {
+         final options = selector.selectMeals(targetCalories: _tdee*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
+         if (options.isNotEmpty) {
+           _currentDayPlan!.lunchId = options.first.id;
+           needsSave = true;
+         }
+      }
+      if (!_currentDayPlan!.dinnerLocked) {
+         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
+         if (options.isNotEmpty) {
+           _currentDayPlan!.dinnerId = options.first.id;
+           needsSave = true;
+         }
+      }
+      
+      if (needsSave) {
+        await PersistenceService.saveDayPlan(_currentDayPlan!);
+        _buildMealPlanFromDayPlan();
+      }
+    } else {
+      await _generateAndSetNewPlan();
+    }
   }
 
   Future<List<MealModel>> getMealAlternativesFor(String mealId) async {
@@ -664,10 +701,33 @@ class UserProvider with ChangeNotifier {
   }
 
   Future<void> regenerateUnlockedSlots(DateTime weekStart) async {
-    // Generate week will automatically fill in null (unlocked) slots
+    final existingPlans = PersistenceService.getAllDayPlansInRange(
+      weekStart,
+      weekStart.add(const Duration(days: 6)),
+    );
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    for (var plan in existingPlans) {
+      if (plan.date.isBefore(today)) continue;
+      
+      bool changed = false;
+      if (!plan.breakfastLocked) { plan.breakfastId = null; changed = true; }
+      if (!plan.lunchLocked) { plan.lunchId = null; changed = true; }
+      if (!plan.dinnerLocked) { plan.dinnerId = null; changed = true; }
+      
+      if (changed) {
+        await PersistenceService.saveDayPlan(plan);
+      }
+    }
+
+    // Generate week will automatically fill in the null slots we just created
     await getWeeklyPlans(weekStart);
-    // Also regenerate today's plan if today is in the week
-    await _initialLoad(); 
+    
+    // Update today's plan if it was in the regenerated week
+    final nowStr = now.toIso8601String().substring(0, 10);
+    _currentDayPlan = PersistenceService.getDayPlan(nowStr);
+    _buildMealPlanFromDayPlan();
   }
 
   Future<void> updateDayPlan(DayPlanEntity plan) async {

@@ -12,8 +12,11 @@ import 'hive/entities/hive_type_registry.dart';
 import 'services/persistence_service.dart';
 import 'hive/seed/seed_service.dart';
 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   String? startupError;
 
@@ -64,22 +67,14 @@ class SmartDietApp extends StatelessWidget {
           home: Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               if (userProvider.isLoading) {
+                // Return an empty container while loading, as the native splash screen is covering it.
                 return const Scaffold(
-                  body: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 20),
-                        Text(
-                          'Loading your diet profile...',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
+                  body: SizedBox.expand(),
                 );
               }
+
+              // Data has loaded, remove the native splash screen.
+              FlutterNativeSplash.remove();
 
               if (userProvider.user != null) {
                 return const MainNavigation();
