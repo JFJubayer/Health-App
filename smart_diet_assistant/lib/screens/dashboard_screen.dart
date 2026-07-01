@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
+import '../widgets/meal_rating_sheet.dart';
 import 'meal_detail_screen.dart';
 import 'add_meal_screen.dart';
 import '../widgets/water_tracker_widget.dart';
@@ -58,8 +59,8 @@ class DashboardScreen extends StatelessWidget {
                   ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
                   const SizedBox(height: 20),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 30),
-                  const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
+                  // const SizedBox(height: 30),
+                  // const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
                   _buildSmartRecommendations(context, userProvider),
                   const SizedBox(height: 30),
@@ -93,29 +94,6 @@ class DashboardScreen extends StatelessWidget {
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('Add Meal', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
       ).animate().scale(delay: 1000.ms).fadeIn(),
-    );
-  }
-
-  Widget _buildMetabolicSummary(BuildContext context, UserProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Chip(
-              label: Text(
-                provider.calorieTier,
-                style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              side: BorderSide.none,
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-      ],
     );
   }
 
@@ -177,7 +155,18 @@ class DashboardScreen extends StatelessWidget {
               value: meal.isConsumed,
               activeColor: Theme.of(context).colorScheme.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              onChanged: (_) => provider.toggleMealConsumed(meal.id),
+              onChanged: (_) async {
+                if (meal.isConsumed) {
+                   provider.toggleMealConsumed(meal.id);
+                } else {
+                   final rating = await showMealRatingSheet(context, meal);
+                   if (rating != null) {
+                      await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: rating);
+                   } else {
+                      await provider.toggleMealConsumedWithFeedback(meal.id, satisfaction: 4.0);
+                   }
+                }
+              },
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
@@ -213,6 +202,8 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+
+
 
   Widget _buildSmartRecommendations(BuildContext context, UserProvider userProvider) {
     try {
@@ -290,7 +281,7 @@ class DashboardScreen extends StatelessWidget {
                 );
               },
             );
-          }).toList(),
+          }),
         ],
       ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1);
     } catch (e) {
@@ -310,6 +301,7 @@ class DashboardScreen extends StatelessWidget {
       case MealType.breakfast: return Icons.wb_sunny_rounded;
       case MealType.lunch: return Icons.fastfood_rounded;
       case MealType.dinner: return Icons.nightlight_round;
+      case MealType.snack: return Icons.apple_rounded;
     }
   }
 
@@ -318,6 +310,7 @@ class DashboardScreen extends StatelessWidget {
       case MealType.breakfast: return Colors.orange;
       case MealType.lunch: return Colors.green;
       case MealType.dinner: return Colors.indigo;
+      case MealType.snack: return Colors.teal;
     }
   }
 }

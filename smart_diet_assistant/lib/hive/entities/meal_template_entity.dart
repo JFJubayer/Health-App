@@ -19,10 +19,10 @@ class MealTemplateEntity {
   @HiveField(3)
   List<IngredientPortion> ingredients;
 
-  @HiveField(4)
+  @HiveField(4, defaultValue: [])
   List<String> tags;
 
-  @HiveField(5)
+  @HiveField(5, defaultValue: [])
   List<String> conditions;
 
   @HiveField(6)
@@ -34,10 +34,10 @@ class MealTemplateEntity {
   @HiveField(8)
   int timesUsed;
 
-  @HiveField(9)
+  @HiveField(9, defaultValue: false)
   bool isCustom;
   
-  @HiveField(10)
+  @HiveField(10, defaultValue: [])
   List<String> recipeSteps;
   
   @HiveField(11)

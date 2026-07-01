@@ -8,6 +8,7 @@ Future<void> showMealPickerSheet(
   BuildContext context,
   String mealId, {
   bool popRouteOnSelect = false,
+  void Function(String newMealId)? onMealSelected,
 }) async {
   final provider = Provider.of<UserProvider>(context, listen: false);
   final alternatives = await provider.getMealAlternativesFor(mealId);
@@ -73,10 +74,14 @@ Future<void> showMealPickerSheet(
               (meal) => _MealOptionCard(
                 meal: meal,
                 onTap: () {
-                  provider.replaceMeal(
-                    mealId,
-                    selectedTemplateId: meal.id,
-                  );
+                  if (onMealSelected != null) {
+                    onMealSelected(meal.id);
+                  } else {
+                    provider.replaceMeal(
+                      mealId,
+                      selectedTemplateId: meal.id,
+                    );
+                  }
                   Navigator.pop(sheetContext);
                   if (popRouteOnSelect && context.mounted) {
                     Navigator.pop(context);

@@ -19,17 +19,26 @@ class UserMealPreferenceEntityAdapter
     };
     return UserMealPreferenceEntity(
       userId: fields[0] as String,
-      favoriteMealIds: (fields[1] as List).cast<String>(),
-      dislikedIngredientIds: (fields[2] as List).cast<String>(),
-      dietaryRestrictions: (fields[3] as List).cast<String>(),
-      mealRatings: (fields[4] as Map).cast<String, double>(),
+      favoriteMealIds:
+          fields[1] == null ? [] : (fields[1] as List).cast<String>(),
+      dislikedIngredientIds:
+          fields[2] == null ? [] : (fields[2] as List).cast<String>(),
+      dietaryRestrictions:
+          fields[3] == null ? [] : (fields[3] as List).cast<String>(),
+      mealRatings:
+          fields[4] == null ? {} : (fields[4] as Map).cast<String, double>(),
+      preferredTags:
+          fields[5] == null ? [] : (fields[5] as List).cast<String>(),
+      avoidedMealIds:
+          fields[6] == null ? [] : (fields[6] as List).cast<String>(),
+      lastUpdated: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserMealPreferenceEntity obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.userId)
       ..writeByte(1)
@@ -39,7 +48,13 @@ class UserMealPreferenceEntityAdapter
       ..writeByte(3)
       ..write(obj.dietaryRestrictions)
       ..writeByte(4)
-      ..write(obj.mealRatings);
+      ..write(obj.mealRatings)
+      ..writeByte(5)
+      ..write(obj.preferredTags)
+      ..writeByte(6)
+      ..write(obj.avoidedMealIds)
+      ..writeByte(7)
+      ..write(obj.lastUpdated);
   }
 
   @override

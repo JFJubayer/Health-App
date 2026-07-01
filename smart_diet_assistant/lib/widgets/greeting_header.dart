@@ -359,7 +359,6 @@ class _DecorativeCircle extends StatelessWidget {
   final double size;
   final double? top;
   final double? bottom;
-  final double? left;
   final double? right;
   final double opacity;
   final Color color;
@@ -368,7 +367,6 @@ class _DecorativeCircle extends StatelessWidget {
     required this.size,
     this.top,
     this.bottom,
-    this.left,
     this.right,
     required this.opacity,
     this.color = Colors.white,
@@ -379,7 +377,6 @@ class _DecorativeCircle extends StatelessWidget {
     return Positioned(
       top: top,
       bottom: bottom,
-      left: left,
       right: right,
       child: Container(
         width: size,

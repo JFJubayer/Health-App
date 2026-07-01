@@ -1,4 +1,5 @@
 import '../models/meal_model.dart';
+import '../models/macro_targets.dart';
 import '../hive/entities/ingredient_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
@@ -93,6 +94,7 @@ class DietService {
       recipeSteps: template.recipeSteps,
       instructions: template.instructions,
       imageUrl: template.imageUrl,
+      tags: template.tags,
       prepTimeMinutes: template.prepTimeMinutes,
     );
   }

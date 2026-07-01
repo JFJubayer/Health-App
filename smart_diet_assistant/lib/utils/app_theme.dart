@@ -35,12 +35,13 @@ class AppTheme {
         iconTheme: const IconThemeData(color: Color(0xFF1F2937)),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
         ),
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.9),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -82,12 +83,13 @@ class AppTheme {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 8,
+        shadowColor: Colors.black.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
-        color: const Color(0xFF1F2937),
+        color: const Color(0xFF1F2937).withValues(alpha: 0.9),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

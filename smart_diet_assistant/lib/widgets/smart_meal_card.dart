@@ -180,6 +180,8 @@ class SmartMealCard extends StatelessWidget {
         return Icons.fastfood_rounded;
       case MealType.dinner:
         return Icons.nightlight_round;
+      case MealType.snack:
+        return Icons.apple_rounded;
     }
   }
 
@@ -191,6 +193,8 @@ class SmartMealCard extends StatelessWidget {
         return Colors.green;
       case MealType.dinner:
         return Colors.indigo;
+      case MealType.snack:
+        return Colors.teal;
     }
   }
 

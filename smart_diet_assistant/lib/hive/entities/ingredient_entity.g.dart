@@ -23,8 +23,8 @@ class IngredientEntityAdapter extends TypeAdapter<IngredientEntity> {
       protein: fields[3] as double,
       carbs: fields[4] as double,
       fat: fields[5] as double,
-      tags: (fields[6] as List).cast<String>(),
-      isCustom: fields[7] as bool,
+      tags: fields[6] == null ? [] : (fields[6] as List).cast<String>(),
+      isCustom: fields[7] == null ? false : fields[7] as bool,
     );
   }
 

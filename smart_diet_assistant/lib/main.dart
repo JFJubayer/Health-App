@@ -12,8 +12,11 @@ import 'hive/entities/hive_type_registry.dart';
 import 'services/persistence_service.dart';
 import 'hive/seed/seed_service.dart';
 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   String? startupError;
 
@@ -64,22 +67,53 @@ class SmartDietApp extends StatelessWidget {
           home: Consumer<UserProvider>(
             builder: (context, userProvider, child) {
               if (userProvider.isLoading) {
+                // Return an empty container while loading, as the native splash screen is covering it.
                 return const Scaffold(
-                  body: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 20),
-                        Text(
-                          'Loading your diet profile...',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
+                  body: SizedBox.expand(),
+                // // Remove native splash screen immediately to show our animated Flutter loading screen
+                // FlutterNativeSplash.remove();
+                // return Scaffold(
+                //   backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                //   body: Center(
+                //     child: Column(
+                //       mainAxisAlignment: MainAxisAlignment.center,
+                //       children: [
+                //         Image.asset(
+                //           'assets/images/logo.png',
+                //           width: 140,
+                //           height: 140,
+                //         ),
+                //         const SizedBox(height: 32),
+                //         SizedBox(
+                //           width: 180,
+                //           child: ClipRRect(
+                //             borderRadius: const BorderRadius.all(Radius.circular(10)),
+                //             child: LinearProgressIndicator(
+                //               minHeight: 6,
+                //               color: Theme.of(context).primaryColor,
+                //               backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                //             ),
+                //           ),
+                //         ),
+                //         const SizedBox(height: 16),
+                //         Text(
+                //           'Loading...',
+                //           style: TextStyle(
+                //             fontSize: 16,
+                //             fontWeight: FontWeight.w600,
+                //             letterSpacing: 1.2,
+                //             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
                 );
               }
+
+              
+              // Data has loaded, remove the native splash screen.
+              FlutterNativeSplash.remove();
 
               if (userProvider.user != null) {
                 return const MainNavigation();

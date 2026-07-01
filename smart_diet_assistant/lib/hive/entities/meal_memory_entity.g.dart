@@ -23,14 +23,15 @@ class MealMemoryEntityAdapter extends TypeAdapter<MealMemoryEntity> {
       consumedAt: fields[3] as DateTime,
       notes: fields[4] as String?,
       satisfaction: fields[5] as double,
-      wasConsumed: fields[6] as bool,
+      wasConsumed: fields[6] == null ? true : fields[6] as bool,
+      wasSwapped: fields[7] == null ? false : fields[7] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, MealMemoryEntity obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class MealMemoryEntityAdapter extends TypeAdapter<MealMemoryEntity> {
       ..writeByte(5)
       ..write(obj.satisfaction)
       ..writeByte(6)
-      ..write(obj.wasConsumed);
+      ..write(obj.wasConsumed)
+      ..writeByte(7)
+      ..write(obj.wasSwapped);
   }
 
   @override

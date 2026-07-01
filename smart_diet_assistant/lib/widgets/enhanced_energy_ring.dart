@@ -31,7 +31,6 @@ class EnhancedEnergyRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = (consumed / target).clamp(0.0, 1.0);
-    final proteinProgress = (proteinConsumed / proteinTarget).clamp(0.0, 1.0);
     final warning = MacroCalculator.getMacroImbalanceWarning(
       proteinConsumed: proteinConsumed,
       proteinTarget: proteinTarget,
@@ -81,8 +80,8 @@ class EnhancedEnergyRing extends StatelessWidget {
                             ),
                             PieChartSectionData(
                               color: Theme.of(context).brightness == Brightness.light
-                                  ? const Color.fromARGB(57, 144, 134, 134)
-                                  : Colors.grey[800]!,
+                                  ? const Color.fromARGB(57, 170, 147, 168)
+                                  : const Color.fromARGB(255, 0, 0, 0),
                               value: (1 - progress) * 100,
                               radius: 10,
                               showTitle: false,

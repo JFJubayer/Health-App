@@ -6,6 +6,7 @@ import '../models/meal_model.dart';
 import '../models/food_item_model.dart';
 import '../providers/user_provider.dart';
 import '../services/food_data_service.dart';
+import 'add_ingredient_screen.dart';
 
 class AddMealScreen extends StatefulWidget {
   const AddMealScreen({super.key});
@@ -144,7 +145,34 @@ class _AddMealScreenState extends State<AddMealScreen> {
               
               _buildSectionHeader('Add Food Items', 'Search for food items to build your plate'),
               const SizedBox(height: 16),
-              _buildFoodSearch(emerald),
+              Row(
+                children: [
+                  Expanded(child: _buildFoodSearch(emerald)),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: emerald,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      tooltip: 'Add Custom Food Item',
+                      onPressed: () async {
+                        final newFood = await Navigator.push<FoodItemModel>(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AddIngredientScreen()),
+                        );
+                        if (!context.mounted) return;
+                        if (newFood != null) {
+                           _addComponent(newFood);
+                           // Force the autocomplete to refresh or close
+                           FocusScope.of(context).unfocus();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
               
               const SizedBox(height: 24),
               if (_addedComponents.isNotEmpty) ...[

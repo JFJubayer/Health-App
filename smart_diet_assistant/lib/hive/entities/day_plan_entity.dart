@@ -19,14 +19,26 @@ class DayPlanEntity {
   @HiveField(4)
   String? dinnerId;
 
-  @HiveField(5)
+  @HiveField(5, defaultValue: [])
   List<String> snackIds;
 
-  @HiveField(6)
+  @HiveField(6, defaultValue: false)
   bool isLocked;
 
-  @HiveField(7)
+  @HiveField(7, defaultValue: {})
   Map<String, bool> consumedSlots;
+
+  @HiveField(8, defaultValue: false)
+  bool breakfastLocked;
+
+  @HiveField(9, defaultValue: false)
+  bool lunchLocked;
+
+  @HiveField(10, defaultValue: false)
+  bool dinnerLocked;
+
+  @HiveField(11)
+  DateTime? lastModified;
 
   DayPlanEntity({
     required this.id,
@@ -36,6 +48,10 @@ class DayPlanEntity {
     this.dinnerId,
     this.snackIds = const [],
     this.isLocked = false,
+    this.breakfastLocked = false,
+    this.lunchLocked = false,
+    this.dinnerLocked = false,
+    this.lastModified,
     Map<String, bool>? consumedSlots,
   }) : consumedSlots = consumedSlots ?? {};
 }

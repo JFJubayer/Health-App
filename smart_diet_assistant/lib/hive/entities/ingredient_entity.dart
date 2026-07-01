@@ -22,10 +22,10 @@ class IngredientEntity {
   @HiveField(5)
   double fat;
 
-  @HiveField(6)
+  @HiveField(6, defaultValue: [])
   List<String> tags;
 
-  @HiveField(7)
+  @HiveField(7, defaultValue: false)
   bool isCustom;
 
   IngredientEntity({

@@ -22,8 +22,11 @@ class MealMemoryEntity {
   @HiveField(5)
   double satisfaction; // 0.0 - 5.0
 
-  @HiveField(6)
+  @HiveField(6, defaultValue: true)
   bool wasConsumed;
+
+  @HiveField(7, defaultValue: false)
+  bool wasSwapped;
 
   MealMemoryEntity({
     required this.id,
@@ -33,5 +36,6 @@ class MealMemoryEntity {
     this.notes,
     this.satisfaction = 0.0,
     this.wasConsumed = true,
+    this.wasSwapped = false,
   });
 }

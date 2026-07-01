@@ -9,6 +9,7 @@ import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_memory_entity.dart';
 import '../hive/entities/user_meal_preference_entity.dart';
+import '../models/shopping_item.dart';
 
 class PersistenceService {
   static Box<IngredientEntity>? _ingredientsBox;
@@ -16,6 +17,7 @@ class PersistenceService {
   static Box<DayPlanEntity>? _dayPlansBox;
   static Box<MealMemoryEntity>? _mealMemoryBox;
   static Box<UserMealPreferenceEntity>? _preferencesBox;
+  static Box<dynamic>? _metaBox;
 
   static Future<void> initHive() async {
     _ingredientsBox = await Hive.openBox<IngredientEntity>('ingredients');
@@ -23,6 +25,15 @@ class PersistenceService {
     _dayPlansBox = await Hive.openBox<DayPlanEntity>('day_plans');
     _mealMemoryBox = await Hive.openBox<MealMemoryEntity>('meal_memory');
     _preferencesBox = await Hive.openBox<UserMealPreferenceEntity>('user_preferences');
+    _metaBox = await Hive.openBox<dynamic>('meta');
+  }
+
+  static Future<void> setSeedVersion(int version) async {
+    await _metaBox?.put('seed_version', version);
+  }
+
+  static int getSeedVersion() {
+    return _metaBox?.get('seed_version', defaultValue: 0) as int? ?? 0;
   }
 
   static Future<void> saveDayPlan(DayPlanEntity plan) async {
@@ -31,6 +42,15 @@ class PersistenceService {
 
   static DayPlanEntity? getDayPlan(String id) {
     return _dayPlansBox?.get(id);
+  }
+
+  static List<DayPlanEntity> getAllDayPlansInRange(DateTime start, DateTime end) {
+    if (_dayPlansBox == null) return [];
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    return _dayPlansBox!.values.where((plan) {
+      return !plan.date.isBefore(startDay) && !plan.date.isAfter(endDay);
+    }).toList();
   }
 
   static Future<void> saveMealTemplate(MealTemplateEntity template) async {
@@ -261,5 +281,22 @@ class PersistenceService {
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  static const String _keyCustomShoppingItems = 'custom_shopping_items';
+
+  static Future<void> saveCustomShoppingItems(List<ShoppingItem> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final itemList = items.map((i) => i.toMap()).toList();
+    await prefs.setString(_keyCustomShoppingItems, jsonEncode(itemList));
+  }
+
+  static Future<List<ShoppingItem>> getCustomShoppingItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_keyCustomShoppingItems);
+    if (data == null) return [];
+
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.map((m) => ShoppingItem.fromMap(m)).toList();
   }
 }
