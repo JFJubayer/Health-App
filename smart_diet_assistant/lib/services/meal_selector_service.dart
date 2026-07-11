@@ -8,10 +8,12 @@ import 'persistence_service.dart';
 class MealSelectorService {
   final List<MealTemplateEntity> allMeals;
   final Map<String, IngredientEntity> ingredients;
+  final bool isWeightLossPlan;
 
   MealSelectorService({
     required this.allMeals,
     required this.ingredients,
+    this.isWeightLossPlan = false,
   });
 
   List<MealTemplateEntity> selectMeals({
@@ -161,12 +163,31 @@ class MealSelectorService {
     int recentCount = memories.where((m) => m.mealTemplateId == meal.id).length;
     double frequencyPenalty = (recentCount * 0.05).clamp(0.0, 0.3);
 
-    final finalScore =
+    double finalScore =
         (calorieFit * 0.35) +
         (macroFit * 0.25) +
         (varietyScore * 0.20) +
         (preferenceScore * 0.15) +
         (ratingScore * 0.05);
+
+    if (isWeightLossPlan) {
+      double proteinCalories = protein * 4;
+      if (calories > 0 && (proteinCalories / calories) >= 0.30) {
+        finalScore += 0.15; // High protein boost for weight loss
+      }
+
+      bool hasLowCalOrLowFat = meal.ingredients.any((p) {
+        final ingredient = ingredients[p.ingredientId];
+        return ingredient != null && (ingredient.tags.contains('low-cal') || ingredient.tags.contains('low-fat'));
+      });
+      if (hasLowCalOrLowFat) {
+        finalScore += 0.10; // Boost weight loss friendly ingredients
+      }
+
+      if (targetCalories > 0 && calories > targetCalories * 1.15) {
+        finalScore -= 0.20; // Calorie excess penalty
+      }
+    }
 
     return finalScore - frequencyPenalty;
   }

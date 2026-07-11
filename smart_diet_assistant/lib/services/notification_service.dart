@@ -16,6 +16,10 @@ class NotificationService {
   static const String fastingChannelName = 'Fasting Reminders';
   static const String fastingChannelDescription = 'Reminders for intermittent fasting windows.';
 
+  static const String weightChannelId = 'weight_reminders';
+  static const String weightChannelName = 'Weight Management Alerts';
+  static const String weightChannelDescription = 'Alerts and tips for weight management.';
+
   static UserProvider? _userProvider;
   static bool _timezoneReady = false;
 
@@ -94,12 +98,20 @@ class NotificationService {
       importance: Importance.high,
     );
 
+    const dynamic weightChannel = AndroidNotificationChannel(
+      weightChannelId,
+      weightChannelName,
+      description: weightChannelDescription,
+      importance: Importance.high,
+    );
+
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     
     if (androidImplementation != null) {
       await androidImplementation.createNotificationChannel(channel);
       await androidImplementation.createNotificationChannel(fastingChannel);
+      await androidImplementation.createNotificationChannel(weightChannel);
     }
   }
 
@@ -256,6 +268,47 @@ class NotificationService {
   static Future<void> cancelFastingNotifications() async {
     if (kIsWeb) return;
     await _notificationsPlugin.cancel(id: 999);
+  }
+
+  static Future<void> scheduleWeightManagementReminder(double targetCalorieBudget) async {
+    if (!_supportsScheduledNotifications) return;
+    _ensureTimezoneReady();
+    
+    final now = DateTime.now();
+    var scheduledTime = DateTime(now.year, now.month, now.day, 8, 30);
+    if (scheduledTime.isBefore(now)) {
+      scheduledTime = scheduledTime.add(const Duration(days: 1));
+    }
+
+    const dynamic androidDetails = AndroidNotificationDetails(
+      weightChannelId,
+      weightChannelName,
+      channelDescription: weightChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const dynamic iosDetails = DarwinNotificationDetails();
+
+    await _notificationsPlugin.cancel(id: 888);
+
+    await _notificationsPlugin.zonedSchedule(
+      id: 888,
+      title: '⚖️ Weight Target Plan Active',
+      body: 'Your tailored calorie goal today is ${targetCalorieBudget.toInt()} kcal. Log your meals to stay on track!',
+      scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  static Future<void> cancelWeightManagementReminder() async {
+    if (kIsWeb) return;
+    await _notificationsPlugin.cancel(id: 888);
   }
 
   static Future<void> showTestNotification() async {

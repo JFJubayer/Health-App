@@ -5,6 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
 import '../services/export_service.dart';
+import '../services/persistence_service.dart';
+import '../services/recommendation_generator.dart';
+import '../widgets/smart_meal_card.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/meal_picker_sheet.dart';
 import 'weekly_plan_screen.dart';
@@ -49,15 +52,119 @@ class MealsScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView.builder(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        itemCount: userProvider.mealPlan.length,
-        itemBuilder: (context, index) {
-          final meal = userProvider.mealPlan[index];
-          return _buildMealCard(context, userProvider, meal).animate().fadeIn(delay: (index * 100).ms).slideX(begin: 0.1);
-        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Today's Plan",
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...userProvider.mealPlan.map((meal) => _buildMealCard(context, userProvider, meal).animate().fadeIn().slideX(begin: 0.05)),
+            const SizedBox(height: 10),
+            _buildSmartRecommendations(context, userProvider),
+            // const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildSmartRecommendations(BuildContext context, UserProvider userProvider) {
+    try {
+      final allMeals = PersistenceService.getAllTemplates();
+      final mealTypeToShow = _getNextMealType();
+
+      final recommendations = RecommendationGenerator.generateRecommendations(
+        meals: allMeals,
+        proteinConsumed: userProvider.totalConsumedProtein,
+        proteinTarget: userProvider.proteinTarget,
+        carbsConsumed: userProvider.totalConsumedCarbs,
+        carbsTarget: userProvider.carbsTarget,
+        fatConsumed: userProvider.totalConsumedFat,
+        fatTarget: userProvider.fatTarget,
+        conditions: userProvider.user?.conditions ?? [],
+        mealType: mealTypeToShow,
+        userId: userProvider.user?.name,
+        maxRecommendations: 2,
+      );
+
+      if (recommendations.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recommended For You',
+                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${mealTypeToShow.name.capitalize()} 🎯',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...recommendations.map((entry) {
+            final confidence = RecommendationGenerator.calculateConfidenceScore(entry.value);
+            return SmartMealCard(
+              meal: entry.key,
+              reasons: entry.value,
+              confidenceScore: confidence,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MealDetailScreen(meal: entry.key),
+                  ),
+                );
+              },
+              onAddMeal: () {
+                userProvider.addCustomMeal(entry.key);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${entry.key.name} added to your plan!'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            );
+          }),
+        ],
+      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1);
+    } catch (e) {
+      return const SizedBox.shrink();
+    }
+  }
+
+  MealType _getNextMealType() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return MealType.breakfast;
+    if (hour < 17) return MealType.lunch;
+    return MealType.dinner;
   }
 
   Widget _buildMealCard(BuildContext context, UserProvider provider, MealModel meal) {
@@ -71,7 +178,7 @@ class MealsScreen extends StatelessWidget {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
@@ -181,5 +288,9 @@ class MealsScreen extends StatelessWidget {
       case MealType.snack: return Colors.teal;
     }
   }
+}
+
+extension on String {
+  String capitalize() => "${this[0].toUpperCase()}${substring(1)}";
 }
 

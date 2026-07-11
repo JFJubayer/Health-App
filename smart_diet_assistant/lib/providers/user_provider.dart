@@ -18,6 +18,7 @@ class UserProvider with ChangeNotifier {
   UserModel? _user;
   double _bmr = 0.0;
   double _tdee = 0.0;
+  double _calorieTarget = 0.0;
   String _calorieTier = '';
   List<MealModel> _mealPlan = [];
   bool _isLoading = true;
@@ -39,12 +40,33 @@ class UserProvider with ChangeNotifier {
   UserModel? get user => _user;
   double get bmr => _bmr;
   double get tdee => _tdee;
+  double get calorieTarget => _calorieTarget;
   String get calorieTier => _calorieTier;
   List<MealModel> get mealPlan => _mealPlan;
   bool get isLoading => _isLoading;
   int get waterIntake => _waterIntake;
   int get waterGoal => _waterGoal;
   Set<String> get checkedIngredients => _checkedIngredients;
+
+  bool get isWeightManagementActive =>
+      _user != null &&
+      _user!.weightManagementEnabled &&
+      HealthService.isHighBmi(_user!.weightKg, _user!.heightCm);
+
+  double get proteinTarget {
+    final ratio = isWeightManagementActive ? 0.35 : 0.30;
+    return (_calorieTarget * ratio) / 4;
+  }
+
+  double get carbsTarget {
+    final ratio = isWeightManagementActive ? 0.35 : 0.40;
+    return (_calorieTarget * ratio) / 4;
+  }
+
+  double get fatTarget {
+    final ratio = isWeightManagementActive ? 0.30 : 0.30;
+    return (_calorieTarget * ratio) / 9;
+  }
 
   int get fastingDurationHours => _fastingDurationHours;
   DateTime? get fastingStartTime => _fastingStartTime;
@@ -195,14 +217,15 @@ class UserProvider with ChangeNotifier {
       if (_user != null) {
         _bmr = HealthService.calculateBMR(_user!);
         _tdee = HealthService.calculateTDEE(_bmr);
-        _calorieTier = DietService.getCalorieTier(_tdee);
+        _calorieTarget = HealthService.calculateCalorieTarget(_user!);
+        _calorieTier = DietService.getCalorieTier(_calorieTarget);
         
         debugPrint('UserProvider: Loading meals...');
         await DietService.seedDataIfNeeded();
         final nowStr = DateTime.now().toIso8601String().substring(0, 10);
         _currentDayPlan = PersistenceService.getDayPlan(nowStr);
         _currentDayPlan ??= await DietService.generateDayPlan(
-          _tdee,
+          _calorieTarget,
           _user!.conditions,
         );
         await _loadCustomMealsCache();
@@ -343,11 +366,20 @@ class UserProvider with ChangeNotifier {
   
   void _rescheduleNotifications() {
     if (_user == null) return;
+    
+    // Hydration reminders
     if (!_hydrationRemindersEnabled) {
       NotificationService.cancelWaterReminders();
-      return;
+    } else {
+      NotificationService.scheduleSmartWaterReminders(_waterIntake, _waterGoal);
     }
-    NotificationService.scheduleSmartWaterReminders(_waterIntake, _waterGoal);
+
+    // Weight management reminders
+    if (isWeightManagementActive) {
+      NotificationService.scheduleWeightManagementReminder(_calorieTarget);
+    } else {
+      NotificationService.cancelWeightManagementReminder();
+    }
   }
 
   void setWaterGoal(int ml) {
@@ -423,7 +455,8 @@ class UserProvider with ChangeNotifier {
     _user = user;
     _bmr = HealthService.calculateBMR(user);
     _tdee = HealthService.calculateTDEE(_bmr);
-    _calorieTier = DietService.getCalorieTier(_tdee);
+    _calorieTarget = HealthService.calculateCalorieTarget(user);
+    _calorieTier = DietService.getCalorieTier(_calorieTarget);
 
     await _generateAndSetNewPlan();
     
@@ -451,7 +484,7 @@ class UserProvider with ChangeNotifier {
 
   Future<void> _generateAndSetNewPlan({List<String>? recentMealIds}) async {
     _currentDayPlan = await DietService.generateDayPlan(
-      _tdee,
+      _calorieTarget,
       _user!.conditions,
       recentMealIds: recentMealIds ?? _recentMealIdsFromDayPlan(),
     );
@@ -464,24 +497,26 @@ class UserProvider with ChangeNotifier {
       final templates = PersistenceService.getAllTemplates();
       final ingredientsMap = { for (var i in PersistenceService.getAllIngredients()) i.id: i };
       final selector = MealSelectorService(allMeals: templates, ingredients: ingredientsMap);
-      final macros = MacroTargets.balanced(_tdee);
+      final macros = isWeightManagementActive
+          ? MacroTargets.weightManagement(_calorieTarget)
+          : MacroTargets.balanced(_calorieTarget);
 
       if (!_currentDayPlan!.breakfastLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
          if (options.isNotEmpty) {
            _currentDayPlan!.breakfastId = options.first.id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.lunchLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
          if (options.isNotEmpty) {
            _currentDayPlan!.lunchId = options.first.id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.dinnerLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
          if (options.isNotEmpty) {
            _currentDayPlan!.dinnerId = options.first.id;
            needsSave = true;
@@ -614,16 +649,22 @@ class UserProvider with ChangeNotifier {
 
   void updateUserProfile(UserModel user) async {
     final previousConditions = List<String>.from(_user?.conditions ?? []);
+    final previousWeightManagementEnabled = _user?.weightManagementEnabled ?? true;
+    final previousWeightDeficitCal = _user?.weightDeficitCal ?? 500.0;
+
     _user = user;
     _bmr = HealthService.calculateBMR(user);
     _tdee = HealthService.calculateTDEE(_bmr);
-    _calorieTier = DietService.getCalorieTier(_tdee);
+    _calorieTarget = HealthService.calculateCalorieTarget(user);
+    _calorieTier = DietService.getCalorieTier(_calorieTarget);
     _waterGoal = (user.weightKg * 35).toInt();
 
     await PersistenceService.saveUser(_user!);
     await PersistenceService.saveWaterGoal(_waterGoal);
 
-    if (!_listsEqualSorted(previousConditions, user.conditions)) {
+    if (!_listsEqualSorted(previousConditions, user.conditions) ||
+        previousWeightManagementEnabled != user.weightManagementEnabled ||
+        previousWeightDeficitCal != user.weightDeficitCal) {
       await _generateAndSetNewPlan();
     } else {
       _buildMealPlanFromDayPlan();

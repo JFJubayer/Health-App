@@ -3,6 +3,7 @@ import '../models/macro_targets.dart';
 import '../hive/entities/ingredient_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
+import 'health_service.dart';
 import 'persistence_service.dart';
 import 'meal_selector_service.dart';
 
@@ -22,6 +23,9 @@ class DietService {
   static Future<DayPlanEntity> generateDayPlan(double tdee, List<String> conditions, {List<String> recentMealIds = const []}) async {
     await seedDataIfNeeded();
 
+    final user = await PersistenceService.getUser();
+    final isWeightLoss = user != null && user.weightManagementEnabled && HealthService.isHighBmi(user.weightKg, user.heightCm);
+
     final allTemplates = PersistenceService.getAllTemplates();
     final ingredientsList = PersistenceService.getAllIngredients();
     final Map<String, IngredientEntity> ingredientsMap = {};
@@ -29,15 +33,21 @@ class DietService {
       ingredientsMap[i.id] = i;
     }
 
-    final selector = MealSelectorService(allMeals: allTemplates, ingredients: ingredientsMap);
+    final selector = MealSelectorService(
+      allMeals: allTemplates,
+      ingredients: ingredientsMap,
+      isWeightLossPlan: isWeightLoss,
+    );
 
     // Targets for meals
     double breakfastTarget = tdee * 0.3;
     double lunchTarget = tdee * 0.4;
     double dinnerTarget = tdee * 0.3;
 
-    // Standard macros
-    final macros = MacroTargets(proteinGrams: (tdee * 0.3) / 4, carbsGrams: (tdee * 0.4) / 4, fatGrams: (tdee * 0.3) / 9);
+    // Standard or weight management macros
+    final macros = isWeightLoss
+        ? MacroTargets.weightManagement(tdee)
+        : MacroTargets.balanced(tdee);
 
     final breakfasts = selector.selectMeals(targetCalories: breakfastTarget, macros: macros, conditions: conditions,  type: MealType.breakfast);
     final lunches = selector.selectMeals(targetCalories: lunchTarget, macros: macros, conditions: conditions,  type: MealType.lunch);
@@ -112,15 +122,18 @@ class DietService {
     for (var i in ingredientsList) {
       ingredientsMap[i.id] = i;
     }
+    final user = await PersistenceService.getUser();
+    final isWeightLoss = user != null && user.weightManagementEnabled && HealthService.isHighBmi(user.weightKg, user.heightCm);
+
     final selector = MealSelectorService(
       allMeals: allTemplates,
       ingredients: ingredientsMap,
+      isWeightLossPlan: isWeightLoss,
     );
-    final macros = MacroTargets(
-      proteinGrams: 50,
-      carbsGrams: 50,
-      fatGrams: 20,
-    );
+    final macros = isWeightLoss
+        ? MacroTargets.weightManagement(targetCalories)
+        : MacroTargets.balanced(targetCalories);
+        
     final options = selector.selectMeals(
       targetCalories: targetCalories,
       macros: macros,

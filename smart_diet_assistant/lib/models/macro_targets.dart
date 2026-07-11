@@ -32,4 +32,12 @@ class MacroTargets {
       fatGrams: (targetCalories * 0.5) / 9,
     );
   }
+
+  factory MacroTargets.weightManagement(double targetCalories) {
+    return MacroTargets(
+      proteinGrams: (targetCalories * 0.35) / 4,
+      carbsGrams: (targetCalories * 0.35) / 4,
+      fatGrams: (targetCalories * 0.3) / 9,
+    );
+  }
 }
