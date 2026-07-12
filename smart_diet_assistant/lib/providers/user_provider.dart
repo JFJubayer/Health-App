@@ -13,6 +13,7 @@ import '../hive/entities/meal_template_entity.dart';
 import '../services/weekly_plan_service.dart';
 import '../models/shopping_item.dart';
 import '../models/macro_targets.dart';
+import '../models/sugar_reading.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -36,6 +37,7 @@ class UserProvider with ChangeNotifier {
   List<MealModel> _customMealsCache = [];
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
+  Map<String, SugarReading> _sugarReadings = {};
 
   UserModel? get user => _user;
   double get bmr => _bmr;
@@ -75,6 +77,32 @@ class UserProvider with ChangeNotifier {
   GamificationModel get gamification => _gamification;
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
   List<ShoppingItem> get customShoppingItems => _customShoppingItems;
+  Map<String, SugarReading> get sugarReadings => _sugarReadings;
+
+  SugarReading? getSugarReading(String mealId, String dateStr) {
+    return _sugarReadings['${mealId}_$dateStr'];
+  }
+
+  SugarReading? getSugarReadingForToday(String mealId) {
+    return getSugarReading(mealId, _todayDateStr);
+  }
+
+  Future<void> recordSugarReading(
+    String mealId, {
+    double? preMeal,
+    double? postMeal,
+    bool clearPre = false,
+    bool clearPost = false,
+  }) async {
+    final key = '${mealId}_$_todayDateStr';
+    final existing = _sugarReadings[key] ?? SugarReading();
+    _sugarReadings[key] = SugarReading(
+      preMeal: clearPre ? null : (preMeal ?? existing.preMeal),
+      postMeal: clearPost ? null : (postMeal ?? existing.postMeal),
+    );
+    await PersistenceService.saveSugarReadings(_sugarReadings);
+    notifyListeners();
+  }
 
   String get _todayDateStr =>
       DateTime.now().toIso8601String().substring(0, 10);
@@ -238,6 +266,9 @@ class UserProvider with ChangeNotifier {
         debugPrint('UserProvider: Loading checked ingredients...');
         _checkedIngredients = await PersistenceService.getCheckedIngredients();
         _customShoppingItems = await PersistenceService.getCustomShoppingItems();
+        
+        debugPrint('UserProvider: Loading sugar readings...');
+        _sugarReadings = await PersistenceService.getSugarReadings();
         
         debugPrint('UserProvider: Loading fasting data...');
         _fastingDurationHours = await PersistenceService.getFastingDuration();

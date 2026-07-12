@@ -10,6 +10,7 @@ import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_memory_entity.dart';
 import '../hive/entities/user_meal_preference_entity.dart';
 import '../models/shopping_item.dart';
+import '../models/sugar_reading.dart';
 
 class PersistenceService {
   static Box<IngredientEntity>? _ingredientsBox;
@@ -298,5 +299,29 @@ class PersistenceService {
 
     final List<dynamic> jsonList = jsonDecode(data);
     return jsonList.map((m) => ShoppingItem.fromMap(m)).toList();
+  }
+
+  static const String _keySugarReadings = 'sugar_readings';
+
+  static Future<void> saveSugarReadings(Map<String, SugarReading> readings) async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<String, Map<String, dynamic>> serialized = readings.map(
+      (key, value) => MapEntry(key, value.toMap()),
+    );
+    await prefs.setString(_keySugarReadings, jsonEncode(serialized));
+  }
+
+  static Future<Map<String, SugarReading>> getSugarReadings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_keySugarReadings);
+    if (data == null) return {};
+    try {
+      final Map<String, dynamic> decoded = jsonDecode(data);
+      return decoded.map(
+        (key, value) => MapEntry(key, SugarReading.fromMap(value)),
+      );
+    } catch (_) {
+      return {};
+    }
   }
 }

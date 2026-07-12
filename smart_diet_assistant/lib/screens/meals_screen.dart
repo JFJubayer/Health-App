@@ -7,6 +7,7 @@ import '../models/meal_model.dart';
 import '../services/export_service.dart';
 import '../services/persistence_service.dart';
 import '../services/recommendation_generator.dart';
+import '../models/sugar_reading.dart';
 import '../widgets/smart_meal_card.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/meal_picker_sheet.dart';
@@ -265,9 +266,281 @@ class MealsScreen extends StatelessWidget {
                 ],
               ),
             ),
+            if (provider.user?.conditions.contains('Diabetes') == true && meal.isConsumed) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: _buildSugarLoggingSection(context, provider, meal),
+              ),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSugarLoggingSection(BuildContext context, UserProvider provider, MealModel meal) {
+    final theme = Theme.of(context);
+    final reading = provider.getSugarReadingForToday(meal.id);
+    
+    final preMeal = reading?.preMeal;
+    final postMeal = reading?.postMeal;
+    final isPreSpike = reading?.isPreMealSpike ?? false;
+    final isPostSpike = reading?.isPostMealSpike ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.healing_rounded, size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              'Blood Glucose Tracking',
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSugarItem(
+                context: context,
+                label: 'Pre-Meal (Fasting)',
+                value: preMeal,
+                isSpike: isPreSpike,
+                thresholdText: 'Target: <130 mg/dL',
+                onTap: () => _showSugarInputDialog(
+                  context,
+                  provider,
+                  meal.id,
+                  isPreMeal: true,
+                  currentVal: preMeal,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSugarItem(
+                context: context,
+                label: 'Post-Meal (2h)',
+                value: postMeal,
+                isSpike: isPostSpike,
+                thresholdText: 'Target: <180 mg/dL',
+                onTap: () => _showSugarInputDialog(
+                  context,
+                  provider,
+                  meal.id,
+                  isPreMeal: false,
+                  currentVal: postMeal,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSugarItem({
+    required BuildContext context,
+    required String label,
+    required double? value,
+    required bool isSpike,
+    required String thresholdText,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    Color statusColor = Colors.green;
+    String statusText = 'Normal';
+    if (isSpike) {
+      statusColor = Colors.red;
+      statusText = 'Spike ⚠️';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value != null 
+              ? statusColor.withValues(alpha: 0.3) 
+              : theme.colorScheme.onSurface.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (value != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${value.toInt()} mg/dL',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onTap,
+                  child: Icon(Icons.edit_rounded, size: 14, color: theme.colorScheme.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  statusText,
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              thresholdText,
+              style: GoogleFonts.outfit(
+                fontSize: 9,
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              height: 28,
+              child: OutlinedButton(
+                onPressed: onTap,
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(
+                  '+ Log',
+                  style: GoogleFonts.outfit(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showSugarInputDialog(
+    BuildContext context,
+    UserProvider provider,
+    String mealId, {
+    required bool isPreMeal,
+    required double? currentVal,
+  }) {
+    final controller = TextEditingController(text: currentVal != null ? currentVal.toInt().toString() : '');
+    final theme = Theme.of(context);
+    final title = isPreMeal ? 'Log Pre-Meal Sugar' : 'Log Post-Meal Sugar';
+    final targetText = isPreMeal ? 'Target: <130 mg/dL (Fasting)' : 'Target: <180 mg/dL (Post-Meal)';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          title: Text(
+            title,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter blood sugar level in mg/dL. $targetText',
+                style: GoogleFonts.outfit(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  labelText: 'Sugar Level',
+                  suffixText: 'mg/dL',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            if (currentVal != null)
+              TextButton(
+                onPressed: () {
+                  if (isPreMeal) {
+                    provider.recordSugarReading(mealId, clearPre: true);
+                  } else {
+                    provider.recordSugarReading(mealId, clearPost: true);
+                  }
+                  Navigator.pop(context);
+                },
+                child: Text('Clear', style: GoogleFonts.outfit(color: Colors.red)),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                final text = controller.text;
+                if (text.isNotEmpty) {
+                  final val = double.tryParse(text);
+                  if (val != null) {
+                    if (isPreMeal) {
+                      provider.recordSugarReading(mealId, preMeal: val);
+                    } else {
+                      provider.recordSugarReading(mealId, postMeal: val);
+                    }
+                  }
+                }
+                Navigator.pop(context);
+              },
+              child: Text('Save', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+            ),
+          ],
+        );
+      },
     );
   }
 

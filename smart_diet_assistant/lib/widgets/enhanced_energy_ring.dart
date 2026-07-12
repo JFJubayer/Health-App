@@ -184,16 +184,16 @@ class EnhancedEnergyRing extends StatelessWidget {
               ],
             ),
           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05),
-          if (mealsConsumed > 0) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Projected intake: ${projected.toInt()} kcal',
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ).animate().fadeIn(duration: 500.ms),
-          ],
+          // if (mealsConsumed > 0) ...[
+          //   const SizedBox(height: 12),
+          //   Text(
+          //     'Projected intake: ${projected.toInt()} kcal',
+          //     style: GoogleFonts.outfit(
+          //       fontSize: 12,
+          //       color: Theme.of(context).colorScheme.onSurfaceVariant,
+          //     ),
+          //   ).animate().fadeIn(duration: 500.ms),
+          // ],
         ],
       ),
     );

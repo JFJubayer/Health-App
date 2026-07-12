@@ -3,10 +3,16 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
+import '../models/sugar_reading.dart';
+import 'persistence_service.dart';
 
 class ExportService {
   static Future<void> exportToPdf(UserModel user, List<MealModel> meals) async {
     final pdf = pw.Document();
+    
+    // Fetch blood sugar readings
+    final readings = await PersistenceService.getSugarReadings();
+    final String dateStr = DateTime.now().toIso8601String().substring(0, 10);
 
     pdf.addPage(
       pw.Page(
@@ -56,27 +62,59 @@ class ExportService {
               pw.Text('Daily Meal Plan', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18)),
               pw.Divider(thickness: 1, color: PdfColors.grey300),
               pw.SizedBox(height: 10),
-              ...meals.map((meal) => pw.Container(
-                margin: const pw.EdgeInsets.only(bottom: 12),
-                padding: const pw.EdgeInsets.all(10),
-                decoration: const pw.BoxDecoration(
-                  color: PdfColors.grey100,
-                  borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
-                ),
-                child: pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(meal.type.name.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
-                        pw.Text(meal.name, style: const pw.TextStyle(fontSize: 14)),
-                      ]
-                    ),
-                    pw.Text('${meal.calories} kcal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-              )),
+              ...meals.map((meal) {
+                final key = '${meal.id}_$dateStr';
+                final reading = readings[key];
+                final hasSugar = user.conditions.contains('Diabetes') &&
+                    reading != null &&
+                    (reading.preMeal != null || reading.postMeal != null);
+
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 12),
+                  padding: const pw.EdgeInsets.all(10),
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(meal.type.name.toUpperCase(), style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                              pw.Text(meal.name, style: const pw.TextStyle(fontSize: 14)),
+                            ]
+                          ),
+                          pw.Text('${meal.calories} kcal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      if (hasSugar) ...[
+                        pw.SizedBox(height: 6),
+                        pw.Divider(thickness: 0.5, color: PdfColors.grey300),
+                        pw.SizedBox(height: 4),
+                        pw.Row(
+                          children: [
+                            pw.Text('Glucose Target Reports: ', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700)),
+                            if (reading.preMeal != null) ...[
+                              pw.Text('Pre-Meal: ${reading.preMeal!.toInt()} mg/dL (${reading.isPreMealSpike ? "Spike ⚠️" : "Normal"})', 
+                                style: pw.TextStyle(fontSize: 10, color: reading.isPreMealSpike ? PdfColors.red800 : PdfColors.green800, fontWeight: pw.FontWeight.bold)),
+                              if (reading.postMeal != null) pw.Text('  |  ', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey500)),
+                            ],
+                            if (reading.postMeal != null) ...[
+                              pw.Text('Post-Meal: ${reading.postMeal!.toInt()} mg/dL (${reading.isPostMealSpike ? "Spike ⚠️" : "Normal"})', 
+                                style: pw.TextStyle(fontSize: 10, color: reading.isPostMealSpike ? PdfColors.red800 : PdfColors.green800, fontWeight: pw.FontWeight.bold)),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
               
               pw.Spacer(),
               pw.Divider(thickness: 0.5),
