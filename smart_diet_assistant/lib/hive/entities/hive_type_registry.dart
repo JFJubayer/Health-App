@@ -7,6 +7,7 @@ import 'day_plan_entity.dart';
 import 'meal_memory_entity.dart';
 import 'user_meal_preference_entity.dart';
 import '../../models/meal_model.dart';
+import '../../bd_food_db/models/food_models.dart';
 
 void registerHiveAdapters() {
   void registerOnce<T>(TypeAdapter<T> adapter) {
@@ -22,4 +23,13 @@ void registerHiveAdapters() {
   registerOnce(MealMemoryEntityAdapter());
   registerOnce(UserMealPreferenceEntityAdapter());
   registerOnce(MealTypeAdapter());
+
+  // bd_food_db adapters
+  registerOnce(FoodCategoryAdapter());
+  registerOnce(RegionAdapter());
+  registerOnce(MealSlotAdapter());
+  registerOnce(IngredientQtyAdapter());
+  registerOnce(NutritionInfoAdapter());
+  registerOnce(FoodItemAdapter());
+  registerOnce(IngredientPriceAdapter());
 }

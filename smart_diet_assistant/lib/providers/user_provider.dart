@@ -14,6 +14,11 @@ import '../services/weekly_plan_service.dart';
 import '../models/shopping_item.dart';
 import '../models/macro_targets.dart';
 import '../models/sugar_reading.dart';
+import '../bd_food_db/models/food_models.dart';
+import '../bd_food_db/services/meal_plan_optimizer.dart';
+import '../hive/entities/ingredient_portion_entity.dart';
+import '../bd_food_db/data/food_database.dart' as bd_db;
+import '../bd_food_db/data/ingredient_prices.dart' as bd_prices;
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
@@ -38,6 +43,12 @@ class UserProvider with ChangeNotifier {
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
   Map<String, SugarReading> _sugarReadings = {};
+
+  Map<String, IngredientPrice> _bdIngredientPrices = {};
+  List<FoodItem> _bdFoodItems = [];
+
+  Map<String, IngredientPrice> get bdIngredientPrices => _bdIngredientPrices;
+  List<FoodItem> get bdFoodItems => _bdFoodItems;
 
   UserModel? get user => _user;
   double get bmr => _bmr;
@@ -266,6 +277,9 @@ class UserProvider with ChangeNotifier {
         debugPrint('UserProvider: Loading checked ingredients...');
         _checkedIngredients = await PersistenceService.getCheckedIngredients();
         _customShoppingItems = await PersistenceService.getCustomShoppingItems();
+
+        _bdIngredientPrices = PersistenceService.getBdIngredientPricesMap();
+        _bdFoodItems = PersistenceService.getAllBdFoodItems();
         
         debugPrint('UserProvider: Loading sugar readings...');
         _sugarReadings = await PersistenceService.getSugarReadings();
@@ -826,6 +840,120 @@ class UserProvider with ChangeNotifier {
     }
   }
   
+  Future<void> updateIngredientPrice(String id, double newPricePerKg) async {
+    final price = _bdIngredientPrices[id];
+    if (price != null) {
+      final updated = price.copyWithPrice(newPricePerKg);
+      _bdIngredientPrices[id] = updated;
+      await PersistenceService.saveBdIngredientPrice(updated);
+      _buildMealPlanFromDayPlan(); // Rebuild today's meal plan costs dynamically
+      notifyListeners();
+    }
+  }
+
+  Future<List<String>> generateWeeklyBudgetPlan({
+    required double weeklyBudget,
+    required double dailyCalorieTarget,
+    required bool vegetarianOnly,
+    required DateTime weekStart,
+  }) async {
+    // 1. Initialize MealPlanOptimizer
+    final optimizer = MealPlanOptimizer(
+      foodDb: _bdFoodItems.isNotEmpty ? _bdFoodItems : bd_db.foodDatabase,
+      priceDb: _bdIngredientPrices.isNotEmpty ? _bdIngredientPrices : bd_prices.ingredientPriceDb,
+    );
+
+    // 2. Generate plan
+    final plan = optimizer.generate(
+      weeklyBudgetBDT: weeklyBudget,
+      dailyCalorieTarget: dailyCalorieTarget,
+      vegetarianOnly: vegetarianOnly,
+    );
+
+    // 3. Save generated plan to day plans
+    for (final dailyPlan in plan.days) {
+      final date = weekStart.add(Duration(days: dailyPlan.dayIndex));
+      final dateStr = date.toIso8601String().substring(0, 10);
+
+      // Resolve breakfast id
+      String? breakfastId;
+      if (dailyPlan.items[MealSlot.breakfast] != null &&
+          dailyPlan.items[MealSlot.breakfast]!.isNotEmpty) {
+        breakfastId = dailyPlan.items[MealSlot.breakfast]!.first.id;
+      }
+
+      // Resolve lunch id (create composite template if multiple items)
+      String? lunchId;
+      final lunchItems = dailyPlan.items[MealSlot.lunch] ?? [];
+      if (lunchItems.length == 1) {
+        lunchId = lunchItems.first.id;
+      } else if (lunchItems.length > 1) {
+        final compositeId = 'composite_lunch_$dateStr';
+        final template = MealTemplateEntity(
+          id: compositeId,
+          name: lunchItems.map((f) => f.nameEn).join(' + '),
+          type: MealType.lunch,
+          ingredients: lunchItems.expand((f) => f.ingredients).map((iq) => IngredientPortion(
+            ingredientId: iq.ingredientId,
+            grams: iq.grams,
+          )).toList(),
+          tags: ['composite', ...lunchItems.map((f) => f.id)],
+          prepTimeMinutes: 15,
+        );
+        await PersistenceService.saveMealTemplate(template);
+        lunchId = compositeId;
+      }
+
+      // Resolve dinner id (create composite template if multiple items)
+      String? dinnerId;
+      final dinnerItems = dailyPlan.items[MealSlot.dinner] ?? [];
+      if (dinnerItems.length == 1) {
+        dinnerId = dinnerItems.first.id;
+      } else if (dinnerItems.length > 1) {
+        final compositeId = 'composite_dinner_$dateStr';
+        final template = MealTemplateEntity(
+          id: compositeId,
+          name: dinnerItems.map((f) => f.nameEn).join(' + '),
+          type: MealType.dinner,
+          ingredients: dinnerItems.expand((f) => f.ingredients).map((iq) => IngredientPortion(
+            ingredientId: iq.ingredientId,
+            grams: iq.grams,
+          )).toList(),
+          tags: ['composite', ...dinnerItems.map((f) => f.id)],
+          prepTimeMinutes: 15,
+        );
+        await PersistenceService.saveMealTemplate(template);
+        dinnerId = compositeId;
+      }
+
+      // Resolve snack ids
+      final snackIds = <String>[];
+      final snackItems = dailyPlan.items[MealSlot.snackTime] ?? [];
+      for (final snack in snackItems) {
+        snackIds.add(snack.id);
+      }
+
+      // Create or update DayPlanEntity
+      final dayPlan = DayPlanEntity(
+        id: dateStr,
+        date: date,
+        breakfastId: breakfastId,
+        lunchId: lunchId,
+        dinnerId: dinnerId,
+        snackIds: snackIds,
+        isLocked: true, // Lock generated plan so it doesn't get auto-regenerated by standard selector
+      );
+      await PersistenceService.saveDayPlan(dayPlan);
+    }
+
+    // Refresh current day plan if today is within generated week
+    final nowStr = DateTime.now().toIso8601String().substring(0, 10);
+    _currentDayPlan = PersistenceService.getDayPlan(nowStr);
+    _buildMealPlanFromDayPlan();
+
+    return plan.notes;
+  }
+
   void clearUser() {
     _user = null;
     _bmr = 0.0;

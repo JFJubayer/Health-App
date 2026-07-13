@@ -14,6 +14,7 @@ import '../services/meal_feedback_service.dart';
 import '../widgets/water_goal_dialog.dart';
 import '../widgets/calorie_graph_widget.dart';
 import '../widgets/glass_card.dart';
+import 'bazaar_prices_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -637,6 +638,27 @@ class ProfileScreen extends StatelessWidget {
                 subtitle: Text('${userProvider.waterGoal} ml', style: GoogleFonts.outfit(fontSize: 13)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => showWaterGoalSheet(context),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.store_mall_directory_outlined, color: Colors.green, size: 22),
+                ),
+                title: Text('Bazaar Prices', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
+                subtitle: Text('Edit ingredient costs (BDT)', style: GoogleFonts.outfit(fontSize: 13)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BazaarPricesScreen(),
+                    ),
+                  );
+                },
               ),
               ListTile(
                 leading: Container(

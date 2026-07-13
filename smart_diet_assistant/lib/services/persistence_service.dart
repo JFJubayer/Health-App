@@ -11,6 +11,7 @@ import '../hive/entities/meal_memory_entity.dart';
 import '../hive/entities/user_meal_preference_entity.dart';
 import '../models/shopping_item.dart';
 import '../models/sugar_reading.dart';
+import '../bd_food_db/models/food_models.dart';
 
 class PersistenceService {
   static Box<IngredientEntity>? _ingredientsBox;
@@ -19,6 +20,8 @@ class PersistenceService {
   static Box<MealMemoryEntity>? _mealMemoryBox;
   static Box<UserMealPreferenceEntity>? _preferencesBox;
   static Box<dynamic>? _metaBox;
+  static Box<FoodItem>? _bdFoodItemBox;
+  static Box<IngredientPrice>? _bdIngredientPriceBox;
 
   static Future<void> initHive() async {
     _ingredientsBox = await Hive.openBox<IngredientEntity>('ingredients');
@@ -27,6 +30,8 @@ class PersistenceService {
     _mealMemoryBox = await Hive.openBox<MealMemoryEntity>('meal_memory');
     _preferencesBox = await Hive.openBox<UserMealPreferenceEntity>('user_preferences');
     _metaBox = await Hive.openBox<dynamic>('meta');
+    _bdFoodItemBox = await Hive.openBox<FoodItem>('bd_food_items');
+    _bdIngredientPriceBox = await Hive.openBox<IngredientPrice>('bd_ingredient_prices');
   }
 
   static Future<void> setSeedVersion(int version) async {
@@ -323,5 +328,41 @@ class PersistenceService {
     } catch (_) {
       return {};
     }
+  }
+
+  // bd_food_db helper methods
+  static List<FoodItem> getAllBdFoodItems() {
+    return _bdFoodItemBox?.values.toList() ?? [];
+  }
+
+  static FoodItem? getBdFoodItem(String id) {
+    return _bdFoodItemBox?.get(id);
+  }
+
+  static Future<void> saveBdFoodItem(FoodItem item) async {
+    await _bdFoodItemBox?.put(item.id, item);
+  }
+
+  static Future<void> saveAllBdFoodItems(List<FoodItem> items) async {
+    final Map<String, FoodItem> map = {for (var i in items) i.id: i};
+    await _bdFoodItemBox?.putAll(map);
+  }
+
+  static List<IngredientPrice> getAllBdIngredientPrices() {
+    return _bdIngredientPriceBox?.values.toList() ?? [];
+  }
+
+  static Map<String, IngredientPrice> getBdIngredientPricesMap() {
+    if (_bdIngredientPriceBox == null) return {};
+    return {for (var p in _bdIngredientPriceBox!.values) p.id: p};
+  }
+
+  static Future<void> saveBdIngredientPrice(IngredientPrice price) async {
+    await _bdIngredientPriceBox?.put(price.id, price);
+  }
+
+  static Future<void> saveAllBdIngredientPrices(List<IngredientPrice> prices) async {
+    final Map<String, IngredientPrice> map = {for (var p in prices) p.id: p};
+    await _bdIngredientPriceBox?.putAll(map);
   }
 }

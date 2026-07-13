@@ -4,9 +4,12 @@ import '../entities/ingredient_portion_entity.dart';
 import '../../models/meal_model.dart';
 import '../utils/deterministic_id.dart';
 import '../../services/persistence_service.dart';
+import '../../bd_food_db/models/food_models.dart' as bd;
+import '../../bd_food_db/data/food_database.dart' as bd_db;
+import '../../bd_food_db/data/ingredient_prices.dart' as bd_prices;
 
 class SeedService {
-  static const int _currentSeedVersion = 1;
+  static const int _currentSeedVersion = 2;
 
   static Future<void> seedIfNeeded() async {
     final seededVersion = PersistenceService.getSeedVersion();
@@ -14,6 +17,7 @@ class SeedService {
 
     await _seedIngredients();
     await _seedMealTemplates();
+    await _seedBdFoodDatabase();
 
     await PersistenceService.setSeedVersion(_currentSeedVersion);
   }
@@ -640,4 +644,77 @@ class SeedService {
     await PersistenceService.saveAllTemplates(templates);
 
     print('Seeded ${templates.length} meal templates');
-}
+  }
+
+  Future<void> _seedBdFoodDatabase() async {
+    // 1. Seed IngredientPrice items
+    final List<bd.IngredientPrice> prices = bd_prices.ingredientPriceDb.values.toList();
+    await PersistenceService.saveAllBdIngredientPrices(prices);
+
+    // 2. Seed FoodItem items
+    final List<bd.FoodItem> foods = bd_db.foodDatabase;
+    await PersistenceService.saveAllBdFoodItems(foods);
+
+    // 3. Create corresponding MealTemplateEntity items in standard templates box
+    final List<MealTemplateEntity> templates = [];
+    for (final food in foods) {
+      MealType type;
+      switch (food.category) {
+        case bd.FoodCategory.breakfast:
+          type = MealType.breakfast;
+          break;
+        case bd.FoodCategory.riceBased:
+        case bd.FoodCategory.bhorta:
+        case bd.FoodCategory.dal:
+        case bd.FoodCategory.fishCurry:
+        case bd.FoodCategory.meatCurry:
+        case bd.FoodCategory.eggDish:
+        case bd.FoodCategory.vegetableCurry:
+        case bd.FoodCategory.shak:
+        case bd.FoodCategory.soupStew:
+          if (food.suitableSlots.contains(bd.MealSlot.lunch)) {
+            type = MealType.lunch;
+          } else if (food.suitableSlots.contains(bd.MealSlot.dinner)) {
+            type = MealType.dinner;
+          } else {
+            type = MealType.lunch;
+          }
+          break;
+        case bd.FoodCategory.snack:
+        case bd.FoodCategory.sweet:
+          type = MealType.snack;
+          break;
+      }
+
+      templates.add(MealTemplateEntity(
+        id: food.id,
+        name: food.nameEn,
+        type: type,
+        ingredients: food.ingredients.map((iq) => IngredientPortion(
+          ingredientId: iq.ingredientId,
+          grams: iq.grams,
+        )).toList(),
+        tags: ['bd_food', ...food.tags],
+        prepTimeMinutes: 15,
+        instructions: 'Dynamic portion: ${food.portionDescription}',
+      ));
+    }
+
+    // Save empty mock ingredients so the app doesn't crash on standard names lookup
+    final List<IngredientEntity> standardIngredients = [];
+    for (final p in prices) {
+      standardIngredients.add(IngredientEntity(
+        id: p.id,
+        name: p.nameEn,
+        caloriesPer100g: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        tags: ['bd_ingredient', p.category],
+      ));
+    }
+    await PersistenceService.saveAllIngredients(standardIngredients);
+    await PersistenceService.saveAllTemplates(templates);
+
+    print('Seeded ${foods.length} Bangladeshi food items & ${prices.length} bazaar prices');
+  }
