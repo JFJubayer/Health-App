@@ -295,15 +295,203 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
         ],
       ),
       child: SafeArea(
-        child: ElevatedButton(
-          onPressed: () async {
-            setState(() => _isLoading = true);
-            await provider.regenerateUnlockedSlots(_currentWeekStart);
-            await _loadWeek();
-          },
-          child: Text('Regenerate Unlocked Slots', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () async {
+                  setState(() => _isLoading = true);
+                  await provider.regenerateUnlockedSlots(_currentWeekStart);
+                  await _loadWeek();
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text('Regenerate', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _showBudgetPlanDialog(provider),
+                icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                label: Text('Budget Planner', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  void _showBudgetPlanDialog(UserProvider provider) {
+    final budgetController = TextEditingController(text: '1800');
+    final caloriesController = TextEditingController(text: provider.calorieTarget.toInt().toString());
+    bool vegetarianOnly = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              title: Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: Colors.green),
+                  const SizedBox(width: 8),
+                  Text('BD Budget Planner', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Generate a 7-day cost-aware Bangladeshi meal plan optimized for value and nutrition per BDT.',
+                      style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: budgetController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Weekly Budget (BDT)',
+                        prefixText: '৳ ',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: caloriesController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Daily Calorie Target (kcal)',
+                        suffixText: ' kcal',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: Text('Vegetarian Only', style: GoogleFonts.outfit(fontSize: 15)),
+                      value: vegetarianOnly,
+                      onChanged: (val) => setState(() => vegetarianOnly = val),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final budget = double.tryParse(budgetController.text) ?? 1800.0;
+                    final calories = double.tryParse(caloriesController.text) ?? provider.calorieTarget;
+                    
+                    Navigator.pop(context); // Close input dialog
+                    
+                    setState(() => _isLoading = true);
+                    try {
+                      final notes = await provider.generateWeeklyBudgetPlan(
+                        weeklyBudget: budget,
+                        dailyCalorieTarget: calories,
+                        vegetarianOnly: vegetarianOnly,
+                        weekStart: _currentWeekStart,
+                      );
+                      await _loadWeek();
+                      if (!context.mounted) return;
+                      _showOptimizerNotesDialog(notes);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Generation failed: $e')),
+                      );
+                    } finally {
+                      if (mounted) {
+                        setState(() => _isLoading = false);
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Generate', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showOptimizerNotesDialog(List<String> notes) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.green),
+              const SizedBox(width: 8),
+              Text('Plan Optimization Report', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: notes.isEmpty ? 1 : notes.length,
+              itemBuilder: (context, index) {
+                if (notes.isEmpty) {
+                  return Text(
+                    'Plan successfully generated within budget and calories!',
+                    style: GoogleFonts.outfit(),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.arrow_right, size: 20, color: Colors.green),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          notes[index],
+                          style: GoogleFonts.outfit(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('Done', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 

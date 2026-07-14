@@ -12,8 +12,10 @@ import '../widgets/fasting_timer_widget.dart';
 import '../widgets/greeting_header.dart';
 import '../widgets/enhanced_energy_ring.dart';
 import '../widgets/smart_meal_card.dart';
+import '../widgets/weight_management_alert.dart';
 import '../services/recommendation_generator.dart';
 import '../services/persistence_service.dart';
+import '../services/health_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -50,19 +52,28 @@ class DashboardScreen extends StatelessWidget {
                     consumed: consumed,
                     target: totalTarget,
                     proteinConsumed: userProvider.totalConsumedProtein,
-                    proteinTarget: (totalTarget * 0.3) / 4,
+                    proteinTarget: userProvider.proteinTarget,
                     carbsConsumed: userProvider.totalConsumedCarbs,
-                    carbsTarget: (totalTarget * 0.4) / 4,
+                    carbsTarget: userProvider.carbsTarget,
                     fatConsumed: userProvider.totalConsumedFat,
-                    fatTarget: (totalTarget * 0.3) / 9,
+                    fatTarget: userProvider.fatTarget,
                     mealsConsumed: userProvider.mealPlan.where((m) => m.isConsumed).length,
                   ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.1),
                   const SizedBox(height: 20),
                   const WaterTrackerWidget().animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                  
+                  // Weight Management alert
+                  // if (HealthService.isHighBmi(userProvider.user!.weightKg, userProvider.user!.heightCm)) ...[
+                  //   const SizedBox(height: 20),
+                  //   WeightManagementAlert(userProvider: userProvider)
+                  //       .animate()
+                  //       .fadeIn(delay: 450.ms)
+                  //       .slideY(begin: 0.1),
+                  // ],
                   // const SizedBox(height: 30),
                   // const FastingTimerWidget().animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
                   const SizedBox(height: 30),
-                  _buildSmartRecommendations(context, userProvider),
+                  // _buildSmartRecommendations(context, userProvider),
                   const SizedBox(height: 30),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

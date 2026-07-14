@@ -74,14 +74,26 @@ class _InputScreenState extends State<InputScreen> {
         heightCm = (feet * 30.48) + (inches * 2.54);
       }
 
-      UserModel user = UserModel(
-        name: name,
-        age: age,
-        gender: _gender,
-        heightCm: heightCm,
-        weightKg: weight,
-        conditions: _selectedConditions,
-      );
+      UserModel user;
+      if (widget.isEditMode && widget.initialUser != null) {
+        user = widget.initialUser!.copyWith(
+          name: name,
+          age: age,
+          gender: _gender,
+          heightCm: heightCm,
+          weightKg: weight,
+          conditions: _selectedConditions,
+        );
+      } else {
+        user = UserModel(
+          name: name,
+          age: age,
+          gender: _gender,
+          heightCm: heightCm,
+          weightKg: weight,
+          conditions: _selectedConditions,
+        );
+      }
 
       final provider = Provider.of<UserProvider>(context, listen: false);
       if (widget.isEditMode) {

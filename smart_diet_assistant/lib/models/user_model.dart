@@ -5,6 +5,8 @@ class UserModel {
   double heightCm;
   double weightKg;
   List<String> conditions;
+  bool weightManagementEnabled;
+  double weightDeficitCal;
 
   UserModel({
     required this.name,
@@ -13,6 +15,8 @@ class UserModel {
     required this.heightCm,
     required this.weightKg,
     this.conditions = const [],
+    this.weightManagementEnabled = true,
+    this.weightDeficitCal = 500.0,
   });
 
   UserModel copyWith({
@@ -22,6 +26,8 @@ class UserModel {
     double? heightCm,
     double? weightKg,
     List<String>? conditions,
+    bool? weightManagementEnabled,
+    double? weightDeficitCal,
   }) {
     return UserModel(
       name: name ?? this.name,
@@ -30,6 +36,8 @@ class UserModel {
       heightCm: heightCm ?? this.heightCm,
       weightKg: weightKg ?? this.weightKg,
       conditions: conditions ?? this.conditions,
+      weightManagementEnabled: weightManagementEnabled ?? this.weightManagementEnabled,
+      weightDeficitCal: weightDeficitCal ?? this.weightDeficitCal,
     );
   }
 
@@ -41,6 +49,8 @@ class UserModel {
       'heightCm': heightCm,
       'weightKg': weightKg,
       'conditions': conditions,
+      'weightManagementEnabled': weightManagementEnabled,
+      'weightDeficitCal': weightDeficitCal,
     };
   }
 
@@ -52,6 +62,8 @@ class UserModel {
       heightCm: map['heightCm']?.toDouble() ?? 0.0,
       weightKg: map['weightKg']?.toDouble() ?? 0.0,
       conditions: List<String>.from(map['conditions'] ?? []),
+      weightManagementEnabled: map['weightManagementEnabled'] ?? true,
+      weightDeficitCal: map['weightDeficitCal']?.toDouble() ?? 500.0,
     );
   }
 }

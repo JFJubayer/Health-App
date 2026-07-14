@@ -14,6 +14,7 @@ import '../services/meal_feedback_service.dart';
 import '../widgets/water_goal_dialog.dart';
 import '../widgets/calorie_graph_widget.dart';
 import '../widgets/glass_card.dart';
+import 'bazaar_prices_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -202,50 +203,92 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildMetabolicGrid(BuildContext context, UserProvider provider) {
+    final theme = Theme.of(context);
+    final isWeightLoss = provider.isWeightManagementActive;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Text(
-            'Metabolic Plan',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          padding: const EdgeInsets.only(left: 8, bottom: 12, right: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Metabolic Plan',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              if (isWeightLoss)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Weight Loss Active (-${provider.user!.weightDeficitCal.toInt()} kcal)',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        Row(
+        Column(
           children: [
-            Expanded(
-              child: _buildMiniCard(
-                context,
-                Icons.local_fire_department_outlined,
-                'Tier',
-                provider.calorieTier,
-                Theme.of(context).colorScheme.primary,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMiniCard(
+                    context,
+                    Icons.track_changes_rounded,
+                    'Daily Calorie Target',
+                    '${provider.calorieTarget.toInt()} kcal',
+                    theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMiniCard(
+                    context,
+                    Icons.local_fire_department_outlined,
+                    'Calorie Tier',
+                    provider.calorieTier,
+                    Colors.purple,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMiniCard(
-                context,
-                Icons.speed_outlined,
-                'BMR',
-                '${provider.bmr.toInt()}',
-                Colors.orange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMiniCard(
-                context,
-                Icons.directions_run_outlined,
-                'TDEE',
-                '${provider.tdee.toInt()}',
-                Colors.green,
-              ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMiniCard(
+                    context,
+                    Icons.speed_outlined,
+                    'BMR (Base)',
+                    '${provider.bmr.toInt()} kcal',
+                    Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMiniCard(
+                    context,
+                    Icons.directions_run_outlined,
+                    'TDEE (Maintenance)',
+                    '${provider.tdee.toInt()} kcal',
+                    Colors.green,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -600,6 +643,27 @@ class ProfileScreen extends StatelessWidget {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.store_mall_directory_outlined, color: Colors.green, size: 22),
+                ),
+                title: Text('Bazaar Prices', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
+                subtitle: Text('Edit ingredient costs (BDT)', style: GoogleFonts.outfit(fontSize: 13)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BazaarPricesScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
                     color: Colors.amber.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -620,6 +684,46 @@ class ProfileScreen extends StatelessWidget {
                   activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
                 ),
               ),
+              if (HealthService.isHighBmi(userProvider.user!.weightKg, userProvider.user!.heightCm)) ...[
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.scale_rounded, color: Colors.orange, size: 22),
+                  ),
+                  title: Text('Weight Loss Plan', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
+                  subtitle: Text(userProvider.user!.weightManagementEnabled ? 'Active deficit' : 'Disabled (Maintenance)', style: GoogleFonts.outfit(fontSize: 13)),
+                  trailing: Switch(
+                    value: userProvider.user!.weightManagementEnabled,
+                    onChanged: (val) {
+                      final updatedUser = userProvider.user!.copyWith(weightManagementEnabled: val);
+                      userProvider.updateUserProfile(updatedUser);
+                    },
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                  ),
+                ),
+                if (userProvider.user!.weightManagementEnabled)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.trending_down_rounded, color: Colors.red, size: 22),
+                    ),
+                    title: Text('Calorie Deficit', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
+                    subtitle: Text('-${userProvider.user!.weightDeficitCal.toInt()} kcal/day', style: GoogleFonts.outfit(fontSize: 13)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _showDeficitAdjustmentDialog(context, userProvider);
+                    },
+                  ),
+              ],
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: OutlinedButton.icon(
@@ -638,6 +742,70 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showDeficitAdjustmentDialog(BuildContext context, UserProvider provider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        double tempDeficit = provider.user!.weightDeficitCal;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              title: Text('Adjust Calorie Deficit', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Select the daily calorie deficit for weight loss.',
+                    style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: [250.0, 500.0, 750.0].map((deficit) {
+                      final isSelected = tempDeficit == deficit;
+                      return ChoiceChip(
+                        label: Text('-${deficit.toInt()} kcal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface)),
+                        selected: isSelected,
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        checkmarkColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() => tempDeficit = deficit);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final updatedUser = provider.user!.copyWith(weightDeficitCal: tempDeficit);
+                    provider.updateUserProfile(updatedUser);
+                    Navigator.pop(context);
+                  },
+                  child: Text('Save', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

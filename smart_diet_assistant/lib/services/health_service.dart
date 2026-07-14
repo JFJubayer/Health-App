@@ -31,4 +31,27 @@ class HealthService {
     if (bmi >= 25 && bmi < 30) return 'Overweight';
     return 'Obesity';
   }
+
+  /// Checks if the user's BMI is in the high category (Overweight or Obese)
+  static bool isHighBmi(double weightKg, double heightCm) {
+    final bmi = calculateBMI(weightKg, heightCm);
+    return bmi >= 25.0;
+  }
+
+  /// Calculates custom daily calorie target, applying a deficit if weight management is active
+  static double calculateCalorieTarget(UserModel user) {
+    double bmr = calculateBMR(user);
+    double tdee = calculateTDEE(bmr);
+    
+    if (user.weightManagementEnabled && isHighBmi(user.weightKg, user.heightCm)) {
+      double target = tdee - user.weightDeficitCal;
+      // Absolute safe minimums: 1500 kcal for males, 1200 kcal for females
+      double minSafeCalories = (user.gender == 'Male') ? 1500.0 : 1200.0;
+      if (tdee <= minSafeCalories) {
+        return tdee;
+      }
+      return target.clamp(minSafeCalories, tdee);
+    }
+    return tdee;
+  }
 }

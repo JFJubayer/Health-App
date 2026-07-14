@@ -13,11 +13,18 @@ import '../hive/entities/meal_template_entity.dart';
 import '../services/weekly_plan_service.dart';
 import '../models/shopping_item.dart';
 import '../models/macro_targets.dart';
+import '../models/sugar_reading.dart';
+import '../bd_food_db/models/food_models.dart';
+import '../bd_food_db/services/meal_plan_optimizer.dart';
+import '../hive/entities/ingredient_portion_entity.dart';
+import '../bd_food_db/data/food_database.dart' as bd_db;
+import '../bd_food_db/data/ingredient_prices.dart' as bd_prices;
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
   double _bmr = 0.0;
   double _tdee = 0.0;
+  double _calorieTarget = 0.0;
   String _calorieTier = '';
   List<MealModel> _mealPlan = [];
   bool _isLoading = true;
@@ -35,16 +42,44 @@ class UserProvider with ChangeNotifier {
   List<MealModel> _customMealsCache = [];
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
+  Map<String, SugarReading> _sugarReadings = {};
+
+  Map<String, IngredientPrice> _bdIngredientPrices = {};
+  List<FoodItem> _bdFoodItems = [];
+
+  Map<String, IngredientPrice> get bdIngredientPrices => _bdIngredientPrices;
+  List<FoodItem> get bdFoodItems => _bdFoodItems;
 
   UserModel? get user => _user;
   double get bmr => _bmr;
   double get tdee => _tdee;
+  double get calorieTarget => _calorieTarget;
   String get calorieTier => _calorieTier;
   List<MealModel> get mealPlan => _mealPlan;
   bool get isLoading => _isLoading;
   int get waterIntake => _waterIntake;
   int get waterGoal => _waterGoal;
   Set<String> get checkedIngredients => _checkedIngredients;
+
+  bool get isWeightManagementActive =>
+      _user != null &&
+      _user!.weightManagementEnabled &&
+      HealthService.isHighBmi(_user!.weightKg, _user!.heightCm);
+
+  double get proteinTarget {
+    final ratio = isWeightManagementActive ? 0.35 : 0.30;
+    return (_calorieTarget * ratio) / 4;
+  }
+
+  double get carbsTarget {
+    final ratio = isWeightManagementActive ? 0.35 : 0.40;
+    return (_calorieTarget * ratio) / 4;
+  }
+
+  double get fatTarget {
+    final ratio = isWeightManagementActive ? 0.30 : 0.30;
+    return (_calorieTarget * ratio) / 9;
+  }
 
   int get fastingDurationHours => _fastingDurationHours;
   DateTime? get fastingStartTime => _fastingStartTime;
@@ -53,6 +88,32 @@ class UserProvider with ChangeNotifier {
   GamificationModel get gamification => _gamification;
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
   List<ShoppingItem> get customShoppingItems => _customShoppingItems;
+  Map<String, SugarReading> get sugarReadings => _sugarReadings;
+
+  SugarReading? getSugarReading(String mealId, String dateStr) {
+    return _sugarReadings['${mealId}_$dateStr'];
+  }
+
+  SugarReading? getSugarReadingForToday(String mealId) {
+    return getSugarReading(mealId, _todayDateStr);
+  }
+
+  Future<void> recordSugarReading(
+    String mealId, {
+    double? preMeal,
+    double? postMeal,
+    bool clearPre = false,
+    bool clearPost = false,
+  }) async {
+    final key = '${mealId}_$_todayDateStr';
+    final existing = _sugarReadings[key] ?? SugarReading();
+    _sugarReadings[key] = SugarReading(
+      preMeal: clearPre ? null : (preMeal ?? existing.preMeal),
+      postMeal: clearPost ? null : (postMeal ?? existing.postMeal),
+    );
+    await PersistenceService.saveSugarReadings(_sugarReadings);
+    notifyListeners();
+  }
 
   String get _todayDateStr =>
       DateTime.now().toIso8601String().substring(0, 10);
@@ -195,14 +256,15 @@ class UserProvider with ChangeNotifier {
       if (_user != null) {
         _bmr = HealthService.calculateBMR(_user!);
         _tdee = HealthService.calculateTDEE(_bmr);
-        _calorieTier = DietService.getCalorieTier(_tdee);
+        _calorieTarget = HealthService.calculateCalorieTarget(_user!);
+        _calorieTier = DietService.getCalorieTier(_calorieTarget);
         
         debugPrint('UserProvider: Loading meals...');
         await DietService.seedDataIfNeeded();
         final nowStr = DateTime.now().toIso8601String().substring(0, 10);
         _currentDayPlan = PersistenceService.getDayPlan(nowStr);
         _currentDayPlan ??= await DietService.generateDayPlan(
-          _tdee,
+          _calorieTarget,
           _user!.conditions,
         );
         await _loadCustomMealsCache();
@@ -215,6 +277,12 @@ class UserProvider with ChangeNotifier {
         debugPrint('UserProvider: Loading checked ingredients...');
         _checkedIngredients = await PersistenceService.getCheckedIngredients();
         _customShoppingItems = await PersistenceService.getCustomShoppingItems();
+
+        _bdIngredientPrices = PersistenceService.getBdIngredientPricesMap();
+        _bdFoodItems = PersistenceService.getAllBdFoodItems();
+        
+        debugPrint('UserProvider: Loading sugar readings...');
+        _sugarReadings = await PersistenceService.getSugarReadings();
         
         debugPrint('UserProvider: Loading fasting data...');
         _fastingDurationHours = await PersistenceService.getFastingDuration();
@@ -343,11 +411,20 @@ class UserProvider with ChangeNotifier {
   
   void _rescheduleNotifications() {
     if (_user == null) return;
+    
+    // Hydration reminders
     if (!_hydrationRemindersEnabled) {
       NotificationService.cancelWaterReminders();
-      return;
+    } else {
+      NotificationService.scheduleSmartWaterReminders(_waterIntake, _waterGoal);
     }
-    NotificationService.scheduleSmartWaterReminders(_waterIntake, _waterGoal);
+
+    // Weight management reminders
+    if (isWeightManagementActive) {
+      NotificationService.scheduleWeightManagementReminder(_calorieTarget);
+    } else {
+      NotificationService.cancelWeightManagementReminder();
+    }
   }
 
   void setWaterGoal(int ml) {
@@ -423,7 +500,8 @@ class UserProvider with ChangeNotifier {
     _user = user;
     _bmr = HealthService.calculateBMR(user);
     _tdee = HealthService.calculateTDEE(_bmr);
-    _calorieTier = DietService.getCalorieTier(_tdee);
+    _calorieTarget = HealthService.calculateCalorieTarget(user);
+    _calorieTier = DietService.getCalorieTier(_calorieTarget);
 
     await _generateAndSetNewPlan();
     
@@ -451,7 +529,7 @@ class UserProvider with ChangeNotifier {
 
   Future<void> _generateAndSetNewPlan({List<String>? recentMealIds}) async {
     _currentDayPlan = await DietService.generateDayPlan(
-      _tdee,
+      _calorieTarget,
       _user!.conditions,
       recentMealIds: recentMealIds ?? _recentMealIdsFromDayPlan(),
     );
@@ -464,24 +542,26 @@ class UserProvider with ChangeNotifier {
       final templates = PersistenceService.getAllTemplates();
       final ingredientsMap = { for (var i in PersistenceService.getAllIngredients()) i.id: i };
       final selector = MealSelectorService(allMeals: templates, ingredients: ingredientsMap);
-      final macros = MacroTargets.balanced(_tdee);
+      final macros = isWeightManagementActive
+          ? MacroTargets.weightManagement(_calorieTarget)
+          : MacroTargets.balanced(_calorieTarget);
 
       if (!_currentDayPlan!.breakfastLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
          if (options.isNotEmpty) {
            _currentDayPlan!.breakfastId = options.first.id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.lunchLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
          if (options.isNotEmpty) {
            _currentDayPlan!.lunchId = options.first.id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.dinnerLocked) {
-         final options = selector.selectMeals(targetCalories: _tdee*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
          if (options.isNotEmpty) {
            _currentDayPlan!.dinnerId = options.first.id;
            needsSave = true;
@@ -614,16 +694,22 @@ class UserProvider with ChangeNotifier {
 
   void updateUserProfile(UserModel user) async {
     final previousConditions = List<String>.from(_user?.conditions ?? []);
+    final previousWeightManagementEnabled = _user?.weightManagementEnabled ?? true;
+    final previousWeightDeficitCal = _user?.weightDeficitCal ?? 500.0;
+
     _user = user;
     _bmr = HealthService.calculateBMR(user);
     _tdee = HealthService.calculateTDEE(_bmr);
-    _calorieTier = DietService.getCalorieTier(_tdee);
+    _calorieTarget = HealthService.calculateCalorieTarget(user);
+    _calorieTier = DietService.getCalorieTier(_calorieTarget);
     _waterGoal = (user.weightKg * 35).toInt();
 
     await PersistenceService.saveUser(_user!);
     await PersistenceService.saveWaterGoal(_waterGoal);
 
-    if (!_listsEqualSorted(previousConditions, user.conditions)) {
+    if (!_listsEqualSorted(previousConditions, user.conditions) ||
+        previousWeightManagementEnabled != user.weightManagementEnabled ||
+        previousWeightDeficitCal != user.weightDeficitCal) {
       await _generateAndSetNewPlan();
     } else {
       _buildMealPlanFromDayPlan();
@@ -754,6 +840,120 @@ class UserProvider with ChangeNotifier {
     }
   }
   
+  Future<void> updateIngredientPrice(String id, double newPricePerKg) async {
+    final price = _bdIngredientPrices[id];
+    if (price != null) {
+      final updated = price.copyWithPrice(newPricePerKg);
+      _bdIngredientPrices[id] = updated;
+      await PersistenceService.saveBdIngredientPrice(updated);
+      _buildMealPlanFromDayPlan(); // Rebuild today's meal plan costs dynamically
+      notifyListeners();
+    }
+  }
+
+  Future<List<String>> generateWeeklyBudgetPlan({
+    required double weeklyBudget,
+    required double dailyCalorieTarget,
+    required bool vegetarianOnly,
+    required DateTime weekStart,
+  }) async {
+    // 1. Initialize MealPlanOptimizer
+    final optimizer = MealPlanOptimizer(
+      foodDb: _bdFoodItems.isNotEmpty ? _bdFoodItems : bd_db.foodDatabase,
+      priceDb: _bdIngredientPrices.isNotEmpty ? _bdIngredientPrices : bd_prices.ingredientPriceDb,
+    );
+
+    // 2. Generate plan
+    final plan = optimizer.generate(
+      weeklyBudgetBDT: weeklyBudget,
+      dailyCalorieTarget: dailyCalorieTarget,
+      vegetarianOnly: vegetarianOnly,
+    );
+
+    // 3. Save generated plan to day plans
+    for (final dailyPlan in plan.days) {
+      final date = weekStart.add(Duration(days: dailyPlan.dayIndex));
+      final dateStr = date.toIso8601String().substring(0, 10);
+
+      // Resolve breakfast id
+      String? breakfastId;
+      if (dailyPlan.items[MealSlot.breakfast] != null &&
+          dailyPlan.items[MealSlot.breakfast]!.isNotEmpty) {
+        breakfastId = dailyPlan.items[MealSlot.breakfast]!.first.id;
+      }
+
+      // Resolve lunch id (create composite template if multiple items)
+      String? lunchId;
+      final lunchItems = dailyPlan.items[MealSlot.lunch] ?? [];
+      if (lunchItems.length == 1) {
+        lunchId = lunchItems.first.id;
+      } else if (lunchItems.length > 1) {
+        final compositeId = 'composite_lunch_$dateStr';
+        final template = MealTemplateEntity(
+          id: compositeId,
+          name: lunchItems.map((f) => f.nameEn).join(' + '),
+          type: MealType.lunch,
+          ingredients: lunchItems.expand((f) => f.ingredients).map((iq) => IngredientPortion(
+            ingredientId: iq.ingredientId,
+            grams: iq.grams,
+          )).toList(),
+          tags: ['composite', ...lunchItems.map((f) => f.id)],
+          prepTimeMinutes: 15,
+        );
+        await PersistenceService.saveMealTemplate(template);
+        lunchId = compositeId;
+      }
+
+      // Resolve dinner id (create composite template if multiple items)
+      String? dinnerId;
+      final dinnerItems = dailyPlan.items[MealSlot.dinner] ?? [];
+      if (dinnerItems.length == 1) {
+        dinnerId = dinnerItems.first.id;
+      } else if (dinnerItems.length > 1) {
+        final compositeId = 'composite_dinner_$dateStr';
+        final template = MealTemplateEntity(
+          id: compositeId,
+          name: dinnerItems.map((f) => f.nameEn).join(' + '),
+          type: MealType.dinner,
+          ingredients: dinnerItems.expand((f) => f.ingredients).map((iq) => IngredientPortion(
+            ingredientId: iq.ingredientId,
+            grams: iq.grams,
+          )).toList(),
+          tags: ['composite', ...dinnerItems.map((f) => f.id)],
+          prepTimeMinutes: 15,
+        );
+        await PersistenceService.saveMealTemplate(template);
+        dinnerId = compositeId;
+      }
+
+      // Resolve snack ids
+      final snackIds = <String>[];
+      final snackItems = dailyPlan.items[MealSlot.snackTime] ?? [];
+      for (final snack in snackItems) {
+        snackIds.add(snack.id);
+      }
+
+      // Create or update DayPlanEntity
+      final dayPlan = DayPlanEntity(
+        id: dateStr,
+        date: date,
+        breakfastId: breakfastId,
+        lunchId: lunchId,
+        dinnerId: dinnerId,
+        snackIds: snackIds,
+        isLocked: true, // Lock generated plan so it doesn't get auto-regenerated by standard selector
+      );
+      await PersistenceService.saveDayPlan(dayPlan);
+    }
+
+    // Refresh current day plan if today is within generated week
+    final nowStr = DateTime.now().toIso8601String().substring(0, 10);
+    _currentDayPlan = PersistenceService.getDayPlan(nowStr);
+    _buildMealPlanFromDayPlan();
+
+    return plan.notes;
+  }
+
   void clearUser() {
     _user = null;
     _bmr = 0.0;
