@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const emerald = Color(0xFF059669);
-  static const teal = Color(0xFF0D9488);
+  static const peach = Color(0xFFF79E74);
+  static const peachLight = Color(0xFFFCAE82);
+  static const charcoal = Color(0xFF3E3F43);
+  static const cream = Color(0xFFF5EFEB);
+  static const cardCream = Color(0xFFFCFAF8);
 }
 
 class AppTheme {
@@ -13,39 +16,39 @@ class AppTheme {
       brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.light,
-        seedColor: AppColors.emerald,
-        primary: AppColors.emerald,
-        secondary: AppColors.teal,
-        surface: Colors.white,
-        surfaceContainerLowest: const Color(0xFFF9FAFB),
-        onSurface: const Color(0xFF1F2937),
-        onSurfaceVariant: const Color(0xFF6B7280),
+        seedColor: AppColors.peach,
+        primary: AppColors.peach,
+        secondary: AppColors.charcoal,
+        surface: AppColors.cardCream,
+        surfaceContainerLowest: AppColors.cream,
+        onSurface: AppColors.charcoal,
+        onSurfaceVariant: const Color(0xFF7E7E82),
       ),
-      scaffoldBackgroundColor: const Color(0xFFF9FAFB),
+      scaffoldBackgroundColor: AppColors.cream,
       textTheme: _buildTextTheme(Brightness.light),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: GoogleFonts.outfit(
-          color: const Color(0xFF1F2937),
+          color: AppColors.charcoal,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF1F2937)),
+        iconTheme: const IconThemeData(color: AppColors.charcoal),
       ),
       cardTheme: CardThemeData(
         elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
+        shadowColor: Colors.black.withValues(alpha: 0.03),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
         ),
-        color: Colors.white.withValues(alpha: 0.9),
+        color: AppColors.cardCream,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.emerald,
+          backgroundColor: AppColors.peach,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -61,15 +64,15 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: ColorScheme.fromSeed(
         brightness: Brightness.dark,
-        seedColor: AppColors.emerald,
-        primary: AppColors.emerald,
-        secondary: AppColors.teal,
-        surface: const Color(0xFF1F2937),
-        surfaceContainerLowest: const Color(0xFF111827),
+        seedColor: AppColors.peach,
+        primary: AppColors.peach,
+        secondary: AppColors.peachLight,
+        surface: const Color(0xFF1E1E1E),
+        surfaceContainerLowest: const Color(0xFF121212),
         onSurface: Colors.white,
         onSurfaceVariant: const Color(0xFF9CA3AF),
       ),
-      scaffoldBackgroundColor: const Color(0xFF111827),
+      scaffoldBackgroundColor: const Color(0xFF121212),
       textTheme: _buildTextTheme(Brightness.dark),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -89,11 +92,11 @@ class AppTheme {
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
-        color: const Color(0xFF1F2937).withValues(alpha: 0.9),
+        color: const Color(0xFF1E1E1E),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.emerald,
+          backgroundColor: AppColors.peach,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -104,8 +107,8 @@ class AppTheme {
   }
 
   static TextTheme _buildTextTheme(Brightness brightness) {
-    Color displayColor = brightness == Brightness.light ? const Color(0xFF1F2937) : Colors.white;
-    Color bodyColor = brightness == Brightness.light ? const Color(0xFF4B5563) : const Color(0xFFD1D5DB);
+    Color displayColor = brightness == Brightness.light ? AppColors.charcoal : Colors.white;
+    Color bodyColor = brightness == Brightness.light ? const Color(0xFF5E5E62) : const Color(0xFFD1D5DB);
 
     return GoogleFonts.outfitTextTheme().copyWith(
       displayLarge: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: displayColor),

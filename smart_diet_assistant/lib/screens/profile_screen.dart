@@ -41,32 +41,8 @@ class ProfileScreen extends StatelessWidget {
             _buildHeader(context, user).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
             const SizedBox(height: 24),
             
-            // Personal Info Grid
-            Row(
-              children: [
-                Expanded(child: _buildMiniCard(context, Icons.cake, 'Age', '${user.age}', Colors.orange).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.monitor_weight, 'Weight', '${user.weightKg.toStringAsFixed(1)} kg', Colors.green).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.height, 'Height', '${user.heightCm.toInt()} cm', Colors.blue).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.person_outline, 'Gender', user.gender, Colors.purple).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                // Expanded(child: _buildMiniCard(context, Icons.person_outline, 'Gender', user.gender, Colors.purple).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                if (user.conditions.isNotEmpty)
-                  Expanded(
-                    child: _buildMiniCard(context, Icons.medical_information, 'Conditions', user.conditions.join(', '), Colors.red)
-                      .animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
-                  )
-                else
-                  Expanded(child: const SizedBox()),
-              ],
-            ),
+            // Personal Info 2×2 Grid Card
+            _buildPersonalInfoCard(context, user).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
             const SizedBox(height: 24),
 
             _buildBmiSection(context, user).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1),
@@ -166,6 +142,93 @@ class ProfileScreen extends StatelessWidget {
           style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ],
+    );
+  }
+
+  Widget _buildPersonalInfoCard(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final labelColor = theme.colorScheme.onSurfaceVariant;
+    final valueColor = theme.colorScheme.onSurface;
+    // final dividerColor = isDark
+    //     ? Colors.white.withValues(alpha: 0.08)
+    //     : const Color(0xFFE0DAD5);
+
+    Widget buildCell(String label, String value) {
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: labelColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: valueColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Top row: Age | Weight
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                buildCell('Age', '${user.age}'),
+                buildCell('Weight', '${user.weightKg.toStringAsFixed(1)} kg'),
+              ],
+            ),
+          ),
+          // Divider(height: 1, thickness: 1, color: dividerColor),
+          // Bottom row: Height | Gender
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                buildCell('Height', '${user.heightCm.toInt()} cm'),
+                buildCell('Gender', user.gender),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -4,173 +4,469 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
-import '../services/export_service.dart';
 import '../services/persistence_service.dart';
-import '../services/recommendation_generator.dart';
-import '../models/sugar_reading.dart';
-import '../widgets/smart_meal_card.dart';
+import '../services/diet_service.dart';
 import 'meal_detail_screen.dart';
-import '../widgets/meal_picker_sheet.dart';
-import 'weekly_plan_screen.dart';
 
-class MealsScreen extends StatelessWidget {
+class MealsScreen extends StatefulWidget {
   const MealsScreen({super.key});
+
+  @override
+  State<MealsScreen> createState() => _MealsScreenState();
+}
+
+class _MealsScreenState extends State<MealsScreen> {
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+
+  // Category list items matching the 3D icons styling with system emojis
+  final List<Map<String, String>> _categories = [
+    {'name': 'All', 'emoji': '🍲'},
+    {'name': 'Vegan', 'emoji': '🥗'},
+    {'name': 'Protein', 'emoji': '🥛'},
+    {'name': 'Snacks', 'emoji': '🍟'},
+  ];
+
+  // Custom Quinoa Veggie Bowl Meal Model to match featured card
+  late final MealModel _quinoaVeggieBowl;
+
+  @override
+  void initState() {
+    super.initState();
+    _quinoaVeggieBowl = MealModel(
+      id: 'quinoa_veggie_bowl_featured',
+      name: 'Quinoa Veggie Bowl',
+      calories: 750,
+      type: MealType.lunch,
+      protein: 22.0,
+      carbs: 88.0,
+      fat: 26.0,
+      prepTimeMinutes: 45,
+      imageUrl: 'assets/images/quinoa_veggie_bowl.png',
+      ingredients: [
+        'Cooked Quinoa',
+        'Sliced Avocado',
+        'Cherry Tomatoes',
+        'Cucumber Slices',
+        'Red Cabbage',
+        'Fresh Salad Leaves',
+        'Chickpeas',
+        'Lemon Dressing'
+      ],
+      instructions: '1. Prepare quinoa.\n2. Slice vegetables and avocado.\n3. Arrange in a bowl and top with chickpeas.\n4. Dress with lemon juice.',
+      recipeSteps: [
+        'Boil 1 cup of quinoa in 2 cups of water for 15 minutes, then fluff with a fork.',
+        'Slice cherry tomatoes, cucumber, red cabbage, and fresh avocado.',
+        'Place salad greens at the base of the bowl, then partition quinoa, chickpeas, and sliced vegetables side by side.',
+        'Drizzle fresh lemon juice and olive oil dressing over the ingredients. Enjoy!'
+      ],
+    );
+  }
+
+  List<MealModel> _getFilteredTemplates() {
+    final allTemplates = PersistenceService.getAllTemplates();
+    final mealModels = allTemplates.map(DietService.resolveMealModel).toList();
+
+    return mealModels.where((meal) {
+      // 1. Search Query Filter
+      final matchesSearch = meal.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // 2. Category Tag Filter
+      if (_selectedCategory == 'All') return true;
+      if (_selectedCategory == 'Vegan') {
+        return meal.ingredients.any((ing) => ing.toLowerCase().contains('tofu') || ing.toLowerCase().contains('spinach') || ing.toLowerCase().contains('oats')) ||
+            meal.name.toLowerCase().contains('veggie') || meal.name.toLowerCase().contains('salad');
+      }
+      if (_selectedCategory == 'Protein') {
+        return meal.protein >= 15.0 || meal.name.toLowerCase().contains('chicken') || meal.name.toLowerCase().contains('beef') || meal.name.toLowerCase().contains('egg') || meal.name.toLowerCase().contains('fish');
+      }
+      if (_selectedCategory == 'Snacks') {
+        return meal.type == MealType.snack;
+      }
+      return true;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    if (userProvider.user == null || userProvider.mealPlan.isEmpty) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(title: const Text('Meals')),
-        body: const Center(child: Text('No meal plan available.')),
-      );
-    }
+    final filteredRecipes = _getFilteredTemplates();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text('Your Diet Plan', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
-            tooltip: 'Weekly Plan',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WeeklyPlanScreen())),
-          ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Theme.of(context).colorScheme.primary),
-            tooltip: 'Regenerate Plan',
-            onPressed: () => userProvider.regenerateMeals(),
-          ),
-          IconButton(
-            icon: Icon(Icons.picture_as_pdf, color: Theme.of(context).colorScheme.primary),
-            tooltip: 'Export PDF',
-            onPressed: () => ExportService.exportToPdf(userProvider.user!, userProvider.mealPlan),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Today's Plan",
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 110), // Safe spacing for navigation bar
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search input + notification header
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: TextField(
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                          prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Notification Button
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.onSurface),
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF79E74),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            ...userProvider.mealPlan.map((meal) => _buildMealCard(context, userProvider, meal).animate().fadeIn().slideX(begin: 0.05)),
-            const SizedBox(height: 10),
-            _buildSmartRecommendations(context, userProvider),
-            // const SizedBox(height: 20),
-          ],
+
+              const SizedBox(height: 24),
+
+              // Categories Row
+              SizedBox(
+                height: 48,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: _categories.length,
+                  itemBuilder: (context, index) {
+                    final cat = _categories[index];
+                    final isSelected = _selectedCategory == cat['name'];
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = cat['name']!;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                              ? const Color(0xFFF79E74) 
+                              : (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 8, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              cat['emoji']!,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              cat['name']!,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: isSelected 
+                                    ? Colors.white 
+                                    : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Trending Recipes Header
+              Row(
+                children: [
+                  Text(
+                    'Trending Recipes',
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF79E74),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(
+                      'See All',
+                      style: GoogleFonts.outfit(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Featured Card: Quinoa Veggie Bowl
+              if (_searchQuery.isEmpty && (_selectedCategory == 'All' || _selectedCategory == 'Vegan')) ...[
+                _buildFeaturedRecipeCard(context),
+                const SizedBox(height: 24),
+              ],
+
+              // Filtered Recipe List
+              Text(
+                'Recipes for you',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              if (filteredRecipes.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40.0),
+                    child: Text(
+                      'No matching recipes found',
+                      style: GoogleFonts.outfit(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredRecipes.length,
+                  itemBuilder: (context, index) {
+                    final meal = filteredRecipes[index];
+                    return _buildRecipeListCard(context, userProvider, meal)
+                        .animate()
+                        .fadeIn(delay: (index * 50).ms)
+                        .slideY(begin: 0.05);
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSmartRecommendations(BuildContext context, UserProvider userProvider) {
-    try {
-      final allMeals = PersistenceService.getAllTemplates();
-      final mealTypeToShow = _getNextMealType();
+  // High Fidelity Redesign of Featured Card
+  Widget _buildFeaturedRecipeCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-      final recommendations = RecommendationGenerator.generateRecommendations(
-        meals: allMeals,
-        proteinConsumed: userProvider.totalConsumedProtein,
-        proteinTarget: userProvider.proteinTarget,
-        carbsConsumed: userProvider.totalConsumedCarbs,
-        carbsTarget: userProvider.carbsTarget,
-        fatConsumed: userProvider.totalConsumedFat,
-        fatTarget: userProvider.fatTarget,
-        conditions: userProvider.user?.conditions ?? [],
-        mealType: mealTypeToShow,
-        userId: userProvider.user?.name,
-        maxRecommendations: 2,
-      );
-
-      if (recommendations.isEmpty) {
-        return const SizedBox.shrink();
-      }
-
-      return Column(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Card Title, Star, and Cook time row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _quinoaVeggieBowl.name,
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_quinoaVeggieBowl.prepTimeMinutes} min',
+                          style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.star_rounded, color: Color(0xFFF79E74), size: 28),
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"Quinoa Veggie Bowl" is already saved!', style: GoogleFonts.outfit()),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Large Round Crop Photo of Bowl
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MealDetailScreen(meal: _quinoaVeggieBowl)),
+              );
+            },
+            child: Center(
+              child: Hero(
+                tag: 'meal_img_quinoa_veggie_bowl_featured',
+                child: Container(
+                  width: 170,
+                  height: 170,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(85),
+                    child: Image.asset(
+                      _quinoaVeggieBowl.imageUrl!,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Difficulty Indicators and Calories row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Recommended For You',
-                style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${mealTypeToShow.name.capitalize()} 🎯',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+              // Difficulty Easy + 5 Blocks (4 filled, 1 grey)
+              Row(
+                children: [
+                  Text(
+                    'Easy',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  // Segmented Blocks
+                  Row(
+                    children: List.generate(5, (i) {
+                      return Container(
+                        width: 14,
+                        height: 6,
+                        margin: const EdgeInsets.only(right: 3),
+                        decoration: BoxDecoration(
+                          color: i < 4 ? const Color(0xFFF79E74) : (isDark ? Colors.grey[800] : Colors.grey[200]),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+
+              // Calories
+              Text(
+                '${_quinoaVeggieBowl.calories} kcal',
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ...recommendations.map((entry) {
-            final confidence = RecommendationGenerator.calculateConfidenceScore(entry.value);
-            return SmartMealCard(
-              meal: entry.key,
-              reasons: entry.value,
-              confidenceScore: confidence,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MealDetailScreen(meal: entry.key),
-                  ),
-                );
-              },
-              onAddMeal: () {
-                userProvider.addCustomMeal(entry.key);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${entry.key.name} added to your plan!'),
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-            );
-          }),
         ],
-      ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1);
-    } catch (e) {
-      return const SizedBox.shrink();
-    }
+      ),
+    ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.98, 0.98));
   }
 
-  MealType _getNextMealType() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return MealType.breakfast;
-    if (hour < 17) return MealType.lunch;
-    return MealType.dinner;
-  }
+  Widget _buildRecipeListCard(BuildContext context, UserProvider provider, MealModel meal) {
+    final theme = Theme.of(context);
 
-  Widget _buildMealCard(BuildContext context, UserProvider provider, MealModel meal) {
-    final color = _getMealColor(meal.type);
-    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -179,368 +475,79 @@ class MealsScreen extends StatelessWidget {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 20, offset: const Offset(0, 8)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
-        child: Column(
+        child: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Hero(
-                    tag: 'meal_icon_${meal.id}',
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(_getMealIcon(meal.type), color: color, size: 30),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${meal.type.name.toUpperCase()} · ${meal.prepTimeMinutes} MIN',
-                          style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: color, letterSpacing: 1),
-                        ),
-                        const SizedBox(height: 4),
-                        Hero(
-                          tag: 'meal_name_${meal.id}',
-                          child: Material(
-                            color: Colors.transparent,
-                            child: Text(
-                              meal.name,
-                              style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${meal.calories} kcal',
-                      style: GoogleFonts.outfit(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${meal.protein.toInt()}g P • ${meal.carbs.toInt()}g C • ${meal.fat.toInt()}g F',
-                    style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
-                  ),
-                  if (provider.isMainPlanMeal(meal.id))
-                    TextButton.icon(
-                      onPressed: () => showMealPickerSheet(context, meal.id),
-                      icon: Icon(Icons.swap_horiz, size: 18, color: color),
-                      label: Text('Swap', style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        backgroundColor: color.withValues(alpha: 0.05),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (provider.user?.conditions.contains('Diabetes') == true && meal.isConsumed) ...[
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: _buildSugarLoggingSection(context, provider, meal),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSugarLoggingSection(BuildContext context, UserProvider provider, MealModel meal) {
-    final theme = Theme.of(context);
-    final reading = provider.getSugarReadingForToday(meal.id);
-    
-    final preMeal = reading?.preMeal;
-    final postMeal = reading?.postMeal;
-    final isPreSpike = reading?.isPreMealSpike ?? false;
-    final isPostSpike = reading?.isPostMealSpike ?? false;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.healing_rounded, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Text(
-              'Blood Glucose Tracking',
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildSugarItem(
-                context: context,
-                label: 'Pre-Meal (Fasting)',
-                value: preMeal,
-                isSpike: isPreSpike,
-                thresholdText: 'Target: <130 mg/dL',
-                onTap: () => _showSugarInputDialog(
-                  context,
-                  provider,
-                  meal.id,
-                  isPreMeal: true,
-                  currentVal: preMeal,
-                ),
+            // Circular image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 55,
+                height: 55,
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                child: meal.imageUrl != null
+                    ? (meal.imageUrl!.startsWith('assets/')
+                        ? Image.asset(meal.imageUrl!, fit: BoxFit.cover)
+                        : Image.network(
+                            meal.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Icon(_getMealIcon(meal.type), color: theme.colorScheme.primary),
+                          ))
+                    : Icon(_getMealIcon(meal.type), color: theme.colorScheme.primary),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildSugarItem(
-                context: context,
-                label: 'Post-Meal (2h)',
-                value: postMeal,
-                isSpike: isPostSpike,
-                thresholdText: 'Target: <180 mg/dL',
-                onTap: () => _showSugarInputDialog(
-                  context,
-                  provider,
-                  meal.id,
-                  isPreMeal: false,
-                  currentVal: postMeal,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSugarItem({
-    required BuildContext context,
-    required String label,
-    required double? value,
-    required bool isSpike,
-    required String thresholdText,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
-    Color statusColor = Colors.green;
-    String statusText = 'Normal';
-    if (isSpike) {
-      statusColor = Colors.red;
-      statusText = 'Spike ⚠️';
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: value != null 
-              ? statusColor.withValues(alpha: 0.3) 
-              : theme.colorScheme.onSurface.withValues(alpha: 0.08),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (value != null) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${value.toInt()} mg/dL',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    meal.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                ),
-                GestureDetector(
-                  onTap: onTap,
-                  child: Icon(Icons.edit_rounded, size: 14, color: theme.colorScheme.primary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  statusText,
-                  style: GoogleFonts.outfit(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
+                  const SizedBox(height: 4),
+                  Text(
+                    '${meal.calories} kcal • ${meal.prepTimeMinutes} min',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ] else ...[
-            Text(
-              thresholdText,
-              style: GoogleFonts.outfit(
-                fontSize: 9,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: double.infinity,
-              height: 28,
-              child: OutlinedButton(
-                onPressed: onTap,
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: Text(
-                  '+ Log',
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _showSugarInputDialog(
-    BuildContext context,
-    UserProvider provider,
-    String mealId, {
-    required bool isPreMeal,
-    required double? currentVal,
-  }) {
-    final controller = TextEditingController(text: currentVal != null ? currentVal.toInt().toString() : '');
-    final theme = Theme.of(context);
-    final title = isPreMeal ? 'Log Pre-Meal Sugar' : 'Log Post-Meal Sugar';
-    final targetText = isPreMeal ? 'Target: <130 mg/dL (Fasting)' : 'Target: <180 mg/dL (Post-Meal)';
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          title: Text(
-            title,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter blood sugar level in mg/dL. $targetText',
-                style: GoogleFonts.outfit(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  labelText: 'Sugar Level',
-                  suffixText: 'mg/dL',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            if (currentVal != null)
-              TextButton(
-                onPressed: () {
-                  if (isPreMeal) {
-                    provider.recordSugarReading(mealId, clearPre: true);
-                  } else {
-                    provider.recordSugarReading(mealId, clearPost: true);
-                  }
-                  Navigator.pop(context);
-                },
-                child: Text('Clear', style: GoogleFonts.outfit(color: Colors.red)),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
-            ),
-            TextButton(
+            // Log/Add button
+            IconButton(
+              icon: Icon(Icons.add_circle_outline_rounded, color: theme.colorScheme.primary),
               onPressed: () {
-                final text = controller.text;
-                if (text.isNotEmpty) {
-                  final val = double.tryParse(text);
-                  if (val != null) {
-                    if (isPreMeal) {
-                      provider.recordSugarReading(mealId, preMeal: val);
-                    } else {
-                      provider.recordSugarReading(mealId, postMeal: val);
-                    }
-                  }
-                }
-                Navigator.pop(context);
+                provider.addCustomMeal(meal);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${meal.name}" to your plan!', style: GoogleFonts.outfit()),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               },
-              child: Text('Save', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
             ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -552,18 +559,4 @@ class MealsScreen extends StatelessWidget {
       case MealType.snack: return Icons.apple_rounded;
     }
   }
-
-  Color _getMealColor(MealType type) {
-    switch (type) {
-      case MealType.breakfast: return Colors.orange;
-      case MealType.lunch: return Colors.green;
-      case MealType.dinner: return Colors.indigo;
-      case MealType.snack: return Colors.teal;
-    }
-  }
 }
-
-extension on String {
-  String capitalize() => "${this[0].toUpperCase()}${substring(1)}";
-}
-

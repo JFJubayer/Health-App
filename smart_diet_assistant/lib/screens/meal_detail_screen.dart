@@ -172,12 +172,19 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
           alignment: Alignment.center,
           children: [
             if (meal.imageUrl != null)
-              Image.network(
-                meal.imageUrl!,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              )
+              meal.imageUrl!.startsWith('assets/')
+                  ? Image.asset(
+                      meal.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
+                  : Image.network(
+                      meal.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
             else
               Container(
                 decoration: BoxDecoration(

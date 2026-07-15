@@ -11,9 +11,9 @@ import '../bd_food_db/data/food_database.dart' as bd_db;
 
 class DietService {
   static String getCalorieTier(double tdee) {
-    if (tdee < 1800) return 'Low Calorie Plan';
-    if (tdee <= 2500) return 'Moderate Calorie Plan';
-    return 'High Calorie Plan';
+    if (tdee < 1800) return 'Low';
+    if (tdee <= 2500) return 'Moderate';
+    return 'High';
   }
 
   static Future<void> seedDataIfNeeded() async {
