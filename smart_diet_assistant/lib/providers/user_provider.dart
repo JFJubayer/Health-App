@@ -43,6 +43,9 @@ class UserProvider with ChangeNotifier {
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
   Map<String, SugarReading> _sugarReadings = {};
+  int _burnedCalories = 0;
+  List<Map<String, dynamic>> _workoutLogs = [];
+  int _workoutDailyTarget = 300;
 
   Map<String, IngredientPrice> _bdIngredientPrices = {};
   List<FoodItem> _bdFoodItems = [];
@@ -89,6 +92,10 @@ class UserProvider with ChangeNotifier {
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
   List<ShoppingItem> get customShoppingItems => _customShoppingItems;
   Map<String, SugarReading> get sugarReadings => _sugarReadings;
+  int get burnedCalories => _burnedCalories;
+  List<Map<String, dynamic>> get workoutLogs => _workoutLogs;
+  int get workoutDailyTarget => _workoutDailyTarget;
+  int get netCalories => totalConsumedCalories - _burnedCalories;
 
   SugarReading? getSugarReading(String mealId, String dateStr) {
     return _sugarReadings['${mealId}_$dateStr'];
@@ -162,6 +169,48 @@ class UserProvider with ChangeNotifier {
   double get totalConsumedProtein => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.protein);
   double get totalConsumedCarbs => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.carbs);
   double get totalConsumedFat => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.fat);
+
+  void burnCalories(int calories) {
+    _burnedCalories += calories;
+    PersistenceService.saveBurnedCalories(_burnedCalories);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  void resetBurnedCalories() {
+    _burnedCalories = 0;
+    _workoutLogs = [];
+    PersistenceService.saveBurnedCalories(_burnedCalories);
+    PersistenceService.saveWorkoutLogs(_todayDateStr, _workoutLogs);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  Future<void> logWorkout({
+    required String name,
+    required int durationMinutes,
+    required int caloriesBurned,
+    String? icon,
+  }) async {
+    _workoutLogs.add({
+      'name': name,
+      'duration': durationMinutes,
+      'calories': caloriesBurned,
+      'icon': icon ?? '🏋️',
+      'time': DateTime.now().toIso8601String(),
+    });
+    _burnedCalories += caloriesBurned;
+    await PersistenceService.saveBurnedCalories(_burnedCalories);
+    await PersistenceService.saveWorkoutLogs(_todayDateStr, _workoutLogs);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  void setWorkoutDailyTarget(int calories) {
+    _workoutDailyTarget = calories;
+    PersistenceService.saveWorkoutDailyTarget(calories);
+    notifyListeners();
+  }
 
   void addCustomShoppingItem(ShoppingItem item) {
     _customShoppingItems.add(item);
@@ -283,6 +332,11 @@ class UserProvider with ChangeNotifier {
         
         debugPrint('UserProvider: Loading sugar readings...');
         _sugarReadings = await PersistenceService.getSugarReadings();
+
+        debugPrint('UserProvider: Loading workout data...');
+        _burnedCalories = await PersistenceService.getBurnedCalories();
+        _workoutLogs = await PersistenceService.getWorkoutLogs(_todayDateStr);
+        _workoutDailyTarget = await PersistenceService.getWorkoutDailyTarget();
         
         debugPrint('UserProvider: Loading fasting data...');
         _fastingDurationHours = await PersistenceService.getFastingDuration();
@@ -390,7 +444,7 @@ class UserProvider with ChangeNotifier {
 
   void _saveCurrentDailySummary() {
     final nowStr = DateTime.now().toIso8601String().substring(0, 10);
-    PersistenceService.saveDailySummary(nowStr, totalConsumedCalories, _waterIntake);
+    PersistenceService.saveDailySummary(nowStr, totalConsumedCalories, _waterIntake, burnedCalories: _burnedCalories);
   }
 
   void addWater(int ml) {
@@ -781,6 +835,7 @@ class UserProvider with ChangeNotifier {
         'date': date,
         'calories': summary != null ? (summary['calories'] as int) : 0,
         'water': summary != null ? (summary['water'] as int) : 0,
+        'burnedCalories': summary != null ? (summary['burnedCalories'] as int? ?? 0) : 0,
       });
     }
     return result;
@@ -961,6 +1016,8 @@ class UserProvider with ChangeNotifier {
     _calorieTier = '';
     _mealPlan = [];
     _fastingStartTime = null;
+    _burnedCalories = 0;
+    _workoutLogs = [];
     PersistenceService.clearAll();
     notifyListeners();
   }

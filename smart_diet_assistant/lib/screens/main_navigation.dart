@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'meals_screen.dart';
 import 'scan_screen.dart';
-import 'favorites_screen.dart';
+import 'workouts_screen.dart';
 import 'profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -19,7 +19,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const DashboardScreen(),
     const MealsScreen(),
     const ScanScreen(),
-    const FavoritesScreen(),
+    const WorkoutsScreen(),
     const ProfileScreen(),
   ];
 
@@ -50,7 +50,7 @@ class _MainNavigationState extends State<MainNavigation> {
               _buildNavButton(0, Icons.home_filled, Icons.home_outlined),
               _buildNavButton(1, Icons.menu_book_rounded, Icons.menu_book_outlined),
               _buildCenterScanButton(),
-              _buildNavButton(3, Icons.star_rounded, Icons.star_outline_rounded),
+              _buildNavButton(3, Icons.fitness_center_rounded, Icons.fitness_center_outlined),
               _buildNavButton(4, Icons.settings_rounded, Icons.settings_outlined),
             ],
           ),

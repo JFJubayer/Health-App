@@ -99,11 +99,44 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Segmented Calorie Arc Meter
             SegmentedCalorieArc(
               consumed: consumed,
               target: totalTarget,
             ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.95, 0.95)),
+
+            const SizedBox(height: 12),
+
+            // Calorie Balance Bar (Intake / Burnt / Net)
+            Row(
+              children: [
+                _buildCalorieStatChip(
+                  context,
+                  icon: Icons.restaurant_rounded,
+                  label: 'Intake',
+                  value: '${consumed.toInt()}',
+                  color: const Color(0xFFF79E74),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildCalorieStatChip(
+                  context,
+                  icon: Icons.local_fire_department_rounded,
+                  label: 'Burnt',
+                  value: '${userProvider.burnedCalories}',
+                  color: const Color(0xFFFF6B6B),
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildCalorieStatChip(
+                  context,
+                  icon: Icons.balance_rounded,
+                  label: 'Net',
+                  value: '${userProvider.netCalories}',
+                  color: userProvider.netCalories >= 0 ? const Color(0xFF4ECDC4) : const Color(0xFF00B894),
+                  isDark: isDark,
+                ),
+              ],
+            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.08),
 
             const SizedBox(height: 16),
 
@@ -129,6 +162,7 @@ class DashboardScreen extends StatelessWidget {
             ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
 
             const SizedBox(height: 24),
+
 
             // Today's Meals Section
             if (loggedMeals.isNotEmpty) ...[
@@ -386,6 +420,51 @@ class DashboardScreen extends StatelessWidget {
       case MealType.dinner: return Colors.indigo;
       case MealType.snack: return Colors.teal;
     }
+  }
+
+  Widget _buildCalorieStatChip(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2E) : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: color.withValues(alpha: isDark ? 0.15 : 0.12),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

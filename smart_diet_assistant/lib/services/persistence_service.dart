@@ -141,11 +141,12 @@ class PersistenceService {
     return GamificationModel.fromMap(jsonDecode(data));
   }
 
-  static Future<void> saveDailySummary(String dateStr, int consumedCalories, int waterIntake) async {
+  static Future<void> saveDailySummary(String dateStr, int consumedCalories, int waterIntake, {int burnedCalories = 0}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('summary_$dateStr', jsonEncode({
       'calories': consumedCalories,
       'water': waterIntake,
+      'burnedCalories': burnedCalories,
     }));
   }
 
@@ -154,6 +155,46 @@ class PersistenceService {
     final data = prefs.getString('summary_$dateStr');
     if (data == null) return null;
     return jsonDecode(data);
+  }
+
+  // Workout logs persistence
+  static String _workoutLogsKey(String dateStr) => 'workout_logs_$dateStr';
+
+  static Future<void> saveWorkoutLogs(String dateStr, List<Map<String, dynamic>> logs) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_workoutLogsKey(dateStr), jsonEncode(logs));
+  }
+
+  static Future<List<Map<String, dynamic>>> getWorkoutLogs(String dateStr) async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_workoutLogsKey(dateStr));
+    if (data == null) return [];
+    final List<dynamic> jsonList = jsonDecode(data);
+    return jsonList.cast<Map<String, dynamic>>();
+  }
+
+  // Burned calories persistence (separate key for quick access)
+  static Future<void> saveBurnedCalories(int calories) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String dateKey = 'burned_${DateTime.now().toIso8601String().substring(0, 10)}';
+    await prefs.setInt(dateKey, calories);
+  }
+
+  static Future<int> getBurnedCalories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String dateKey = 'burned_${DateTime.now().toIso8601String().substring(0, 10)}';
+    return prefs.getInt(dateKey) ?? 0;
+  }
+
+  // Workout daily target persistence
+  static Future<void> saveWorkoutDailyTarget(int calories) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('workout_daily_target', calories);
+  }
+
+  static Future<int> getWorkoutDailyTarget() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('workout_daily_target') ?? 300;
   }
 
   static Future<void> saveUser(UserModel user) async {
