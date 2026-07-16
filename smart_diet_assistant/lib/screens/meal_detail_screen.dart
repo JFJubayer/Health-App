@@ -60,18 +60,76 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                   provider.toggleMealConsumed(meal.id);
                   if (context.mounted) Navigator.pop(context);
                 } else {
-                  final rating = await showMealRatingSheet(context, meal);
-                  if (rating != null) {
-                    await provider.toggleMealConsumedWithFeedback(
-                      meal.id,
-                      satisfaction: rating,
-                    );
-                  } else {
-                    await provider.toggleMealConsumedWithFeedback(
-                      meal.id,
-                      satisfaction: 4.0,
-                    );
+                  // Mark consumed first with default rating
+                  await provider.toggleMealConsumedWithFeedback(
+                    meal.id,
+                    satisfaction: 4.0,
+                  );
+                  if (!context.mounted) return;
+
+                  // Show small prompt asking if user wants to rate
+                  final wantsToRate = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) {
+                      final dlgTheme = Theme.of(ctx);
+                      return AlertDialog(
+                        backgroundColor: dlgTheme.scaffoldBackgroundColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Meal Logged!',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: dlgTheme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Would you like to rate this meal?',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                color: dlgTheme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Skip', style: GoogleFonts.outfit(color: Colors.grey)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(
+                              'Rate Now',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                color: dlgTheme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (wantsToRate == true && context.mounted) {
+                    final rating = await showMealRatingSheet(context, meal);
+                    if (rating != null && context.mounted) {
+                      await provider.toggleMealConsumedWithFeedback(
+                        meal.id,
+                        satisfaction: rating,
+                      );
+                    }
                   }
+
                   if (context.mounted) Navigator.pop(context);
                 }
               },

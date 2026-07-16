@@ -172,7 +172,7 @@ class DashboardScreen extends StatelessWidget {
 
             // Supplementary Utilities (Water & Fasting) gracefully nested below
             Text(
-              'Hydration & Fasting',
+              'Water Intake',
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -193,136 +193,156 @@ class DashboardScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color ?? (isDark ? const Color(0xFF1E1E1E) : Colors.white),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Circular crop food image
-          Hero(
-            tag: 'meal_img_${meal.id}',
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(25),
-              child: Container(
-                width: 50,
-                height: 50,
-                color: _getMealColor(meal.type).withValues(alpha: 0.1),
-                child: meal.imageUrl != null
-                    ? (meal.imageUrl!.startsWith('assets/')
-                        ? Image.asset(
-                            meal.imageUrl!,
-                            fit: BoxFit.cover,
-                          )
-                        : Image.network(
-                            meal.imageUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type)),
-                          ))
-                    : Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type), size: 24),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => MealDetailScreen(meal: meal)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color ?? (isDark ? const Color(0xFF1E1E1E) : Colors.white),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Circular crop food image
+            Hero(
+              tag: 'meal_img_${meal.id}',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(25),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  color: _getMealColor(meal.type).withValues(alpha: 0.1),
+                  child: meal.imageUrl != null
+                      ? (meal.imageUrl!.startsWith('assets/')
+                          ? Image.asset(
+                              meal.imageUrl!,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.network(
+                              meal.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type)),
+                            ))
+                      : Icon(_getMealIcon(meal.type), color: _getMealColor(meal.type), size: 24),
+                ),
               ),
             ),
-          ),
-          
-          const SizedBox(width: 16),
+            
+            const SizedBox(width: 16),
 
-          // Main contents column
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top row: Title/Time vs Calories/Goal-Percent
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title and Time
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            meal.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+            // Main contents column
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: Title/Calories vs Status indicator
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and Calories
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              meal.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                            '${meal.calories} kcal',
                             style: GoogleFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
+                              color: const Color(0xFFF79E74),
                             ),
                           ),
-                          Text(
-                          '${meal.calories} kcal',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFF79E74),
-                          ),
+                          
+                          ],
                         ),
-                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Calories and Percentage
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Bottom row: Macro indicators (Protein, Carbs, Fat)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildMacroItem('Protein', '${meal.protein.toInt()}g'),
-                    _buildMacroItem('Carbs', '${meal.carbs.toInt()}g'),
-                    _buildMacroItem('Fat', '${meal.fat.toInt()}g'),
-                    
-                    // Edit pencil icon
-                    GestureDetector(
-                      onTap: () {
-                        // Open meal details
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MealDetailScreen(meal: meal),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
+                      const SizedBox(width: 8),
+                      // Consumed / Pending status chip
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
-                          shape: BoxShape.circle,
+                          color: meal.isConsumed
+                              ? Colors.green.withValues(alpha: 0.12)
+                              : const Color(0xFFF79E74).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onSurfaceVariant,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              meal.isConsumed
+                                  ? Icons.check_circle_rounded
+                                  : Icons.schedule_rounded,
+                              size: 14,
+                              color: meal.isConsumed
+                                  ? Colors.green
+                                  : const Color(0xFFF79E74),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              meal.isConsumed ? 'Eaten' : 'Pending',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: meal.isConsumed
+                                    ? Colors.green
+                                    : const Color.fromARGB(255, 244, 159, 84),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Bottom row: Macro indicators (Protein, Carbs, Fat)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildMacroItem('Protein', '${meal.protein.toInt()}g'),
+                      _buildMacroItem('Carbs', '${meal.carbs.toInt()}g'),
+                      _buildMacroItem('Fat', '${meal.fat.toInt()}g'),
+
+                      // Chevron arrow hint for tap
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
