@@ -9,6 +9,7 @@ import 'weekly_plan_screen.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/segmented_calorie_arc.dart';
 import '../widgets/water_tracker_widget.dart';
+import '../services/export_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -69,26 +70,14 @@ class DashboardScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.onSurface),
-                  onPressed: () {},
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF79E74),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
+            child: IconButton(
+              tooltip: 'Export PDF Report',
+              icon: Icon(Icons.picture_as_pdf_outlined, color: theme.colorScheme.onSurface),
+              onPressed: () {
+                if (userProvider.user != null) {
+                  ExportService.exportToPdf(userProvider.user!, userProvider.mealPlan);
+                }
+              },
             ),
           ),
         ],
@@ -102,41 +91,14 @@ class DashboardScreen extends StatelessWidget {
             SegmentedCalorieArc(
               consumed: consumed,
               target: totalTarget,
+              burned: userProvider.burnedCalories.toDouble(),
+              proteinConsumed: userProvider.totalConsumedProtein,
+              proteinTarget: userProvider.proteinTarget,
+              carbsConsumed: userProvider.totalConsumedCarbs,
+              carbsTarget: userProvider.carbsTarget,
+              fatConsumed: userProvider.totalConsumedFat,
+              fatTarget: userProvider.fatTarget,
             ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.95, 0.95)),
-
-            const SizedBox(height: 12),
-
-            // Calorie Balance Bar (Intake / Burnt / Net)
-            Row(
-              children: [
-                _buildCalorieStatChip(
-                  context,
-                  icon: Icons.restaurant_rounded,
-                  label: 'Intake',
-                  value: '${consumed.toInt()}',
-                  color: const Color(0xFFF79E74),
-                  isDark: isDark,
-                ),
-                const SizedBox(width: 8),
-                _buildCalorieStatChip(
-                  context,
-                  icon: Icons.local_fire_department_rounded,
-                  label: 'Burnt',
-                  value: '${userProvider.burnedCalories}',
-                  color: const Color(0xFFFF6B6B),
-                  isDark: isDark,
-                ),
-                const SizedBox(width: 8),
-                _buildCalorieStatChip(
-                  context,
-                  icon: Icons.balance_rounded,
-                  label: 'Net',
-                  value: '${userProvider.netCalories}',
-                  color: userProvider.netCalories >= 0 ? const Color(0xFF4ECDC4) : const Color(0xFF00B894),
-                  isDark: isDark,
-                ),
-              ],
-            ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.08),
 
             const SizedBox(height: 16),
 
@@ -338,16 +300,16 @@ class DashboardScreen extends StatelessWidget {
                                   : const Color(0xFFF79E74),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              meal.isConsumed ? 'Eaten' : 'Pending',
-                              style: GoogleFonts.outfit(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: meal.isConsumed
-                                    ? Colors.green
-                                    : const Color.fromARGB(255, 244, 159, 84),
-                              ),
-                            ),
+                            // Text(
+                            //   meal.isConsumed ? 'Eaten' : 'Pending',
+                            //   style: GoogleFonts.outfit(
+                            //     fontSize: 11,
+                            //     fontWeight: FontWeight.w700,
+                            //     color: meal.isConsumed
+                            //         ? Colors.green
+                            //         : const Color.fromARGB(255, 244, 159, 84),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
@@ -421,50 +383,4 @@ class DashboardScreen extends StatelessWidget {
       case MealType.snack: return Colors.teal;
     }
   }
-
-  Widget _buildCalorieStatChip(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required bool isDark,
-  }) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF2C2C2E) : color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: color.withValues(alpha: isDark ? 0.15 : 0.12),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
