@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
+import '../widgets/active_workout_floating_bar.dart';
 import 'dashboard_screen.dart';
 import 'meals_screen.dart';
 import 'scan_screen.dart';
@@ -27,7 +30,17 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true, // Allows content to flow behind the floating navigation bar
-      body: _screens[_currentIndex],
+      body: Stack(
+        children: [
+          _screens[_currentIndex],
+          const Positioned(
+            left: 24,
+            right: 24,
+            bottom: 115,
+            child: ActiveWorkoutFloatingBar(),
+          ),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         child: Container(
           height: 80,

@@ -52,7 +52,7 @@ class WorkoutPlan {
 // Preset Data
 // ──────────────────────────────────────────────
 
-const List<WorkoutTemplate> _presetWorkouts = [
+const List<WorkoutTemplate> presetWorkouts = [
   WorkoutTemplate(
     id: 'hiit',
     name: 'HIIT Sprint',
@@ -495,7 +495,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> with TickerProviderStat
         const SizedBox(height: 12),
 
         // Workout cards
-        ..._presetWorkouts.asMap().entries.map((entry) {
+        ...presetWorkouts.asMap().entries.map((entry) {
           final index = entry.key;
           final workout = entry.value;
           return Padding(
@@ -782,22 +782,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> with TickerProviderStat
   // ──────────────────────────────────────────────
 
   void _showWorkoutBottomSheet(BuildContext context, UserProvider provider, WorkoutTemplate workout) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _WorkoutSessionSheet(
-        workout: workout,
-        onComplete: (durationMinutes, caloriesBurned) {
-          provider.logWorkout(
-            name: workout.name,
-            durationMinutes: durationMinutes,
-            caloriesBurned: caloriesBurned,
-            icon: workout.icon,
-          );
-        },
-      ),
-    );
+    showWorkoutBottomSheet(context, provider, workout);
   }
 
   // ──────────────────────────────────────────────
@@ -1076,57 +1061,35 @@ class _WorkoutSessionSheet extends StatefulWidget {
 
 class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
   int _selectedDuration = 20; // minutes
-  bool _isTimerRunning = false;
-  bool _isTimerComplete = false;
-  int _elapsedSeconds = 0;
-  Timer? _timer;
-
-  int get _estimatedCalories => (widget.workout.caloriesPerMinute * _selectedDuration).toInt();
-  int get _currentCalories => (widget.workout.caloriesPerMinute * (_elapsedSeconds / 60)).toInt();
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   void _startTimer() {
-    setState(() {
-      _isTimerRunning = true;
-      _elapsedSeconds = 0;
-    });
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_elapsedSeconds >= _selectedDuration * 60) {
-        _timer?.cancel();
-        setState(() {
-          _isTimerRunning = false;
-          _isTimerComplete = true;
-        });
-        return;
-      }
-      setState(() {
-        _elapsedSeconds++;
-      });
-    });
+    final provider = context.read<UserProvider>();
+    provider.startWorkout(
+      widget.workout.name,
+      widget.workout.icon,
+      widget.workout.caloriesPerMinute.toDouble(),
+      _selectedDuration,
+    );
   }
 
   void _stopTimer() {
-    _timer?.cancel();
-    setState(() {
-      _isTimerRunning = false;
-      _isTimerComplete = true;
-    });
+    final provider = context.read<UserProvider>();
+    provider.stopWorkoutEarly();
   }
 
   void _completeWorkout() {
-    final actualMinutes = (_elapsedSeconds / 60).ceil();
-    widget.onComplete(actualMinutes, _currentCalories);
+    final provider = context.read<UserProvider>();
+    final isCurrentActive = provider.activeWorkoutName == widget.workout.name;
+    final elapsedSeconds = isCurrentActive ? provider.activeWorkoutElapsedSeconds : 0;
+    final currentCalories = (widget.workout.caloriesPerMinute * (elapsedSeconds / 60)).toInt();
+    
+    provider.completeWorkout();
     Navigator.pop(context);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '${widget.workout.name} complete! Burned $_currentCalories kcal',
+          '${widget.workout.name} complete! Burned $currentCalories kcal',
           style: GoogleFonts.outfit(),
         ),
         behavior: SnackBarBehavior.floating,
@@ -1145,8 +1108,19 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final totalSeconds = _selectedDuration * 60;
-    final timerProgress = totalSeconds > 0 ? (_elapsedSeconds / totalSeconds).clamp(0.0, 1.0) : 0.0;
+
+    final provider = context.watch<UserProvider>();
+    final isCurrentActive = provider.activeWorkoutName == widget.workout.name;
+
+    final isTimerRunning = isCurrentActive && provider.isActiveWorkoutRunning;
+    final isTimerComplete = isCurrentActive && provider.isActiveWorkoutComplete;
+    final elapsedSeconds = isCurrentActive ? provider.activeWorkoutElapsedSeconds : 0;
+    final duration = isCurrentActive ? (provider.activeWorkoutDurationMinutes ?? _selectedDuration) : _selectedDuration;
+
+    final totalSeconds = duration * 60;
+    final timerProgress = totalSeconds > 0 ? (elapsedSeconds / totalSeconds).clamp(0.0, 1.0) : 0.0;
+    final estimatedCalories = (widget.workout.caloriesPerMinute * duration).toInt();
+    final currentCalories = (widget.workout.caloriesPerMinute * (elapsedSeconds / 60)).toInt();
 
     return Container(
       decoration: BoxDecoration(
@@ -1211,7 +1185,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
           const SizedBox(height: 24),
 
           // Duration selector or timer
-          if (!_isTimerRunning && !_isTimerComplete) ...[
+          if (!isTimerRunning && !isTimerComplete) ...[
             Text(
               'Select Duration',
               style: GoogleFonts.outfit(
@@ -1265,7 +1239,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                   const Text('🔥', style: TextStyle(fontSize: 18)),
                   const SizedBox(width: 8),
                   Text(
-                    'Estimated burn: ~$_estimatedCalories kcal',
+                    'Estimated burn: ~$estimatedCalories kcal',
                     style: GoogleFonts.outfit(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -1297,7 +1271,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
           ],
 
           // Timer running
-          if (_isTimerRunning) ...[
+          if (isTimerRunning) ...[
             const SizedBox(height: 8),
             SizedBox(
               width: 160,
@@ -1320,7 +1294,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _formatTime(_elapsedSeconds),
+                        _formatTime(elapsedSeconds),
                         style: GoogleFonts.outfit(
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
@@ -1329,7 +1303,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '$_currentCalories kcal',
+                        '$currentCalories kcal',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -1361,7 +1335,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
           ],
 
           // Timer complete
-          if (_isTimerComplete) ...[
+          if (isTimerComplete) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(24),
@@ -1383,7 +1357,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_formatTime(_elapsedSeconds)} · $_currentCalories kcal burned',
+                    '${_formatTime(elapsedSeconds)} · $currentCalories kcal burned',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -1413,4 +1387,43 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
       ),
     );
   }
+}
+
+// ──────────────────────────────────────────────
+// Top-Level Helpers for Workout Bottom Sheets
+// ──────────────────────────────────────────────
+
+void showWorkoutBottomSheet(BuildContext context, UserProvider provider, WorkoutTemplate workout) {
+  if (provider.activeWorkoutName != null && provider.activeWorkoutName != workout.name) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'A workout "${provider.activeWorkoutName}" is already active. Please complete or cancel it first.',
+          style: GoogleFonts.outfit(),
+        ),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+    return;
+  }
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => _WorkoutSessionSheet(
+      workout: workout,
+      onComplete: (durationMinutes, caloriesBurned) {},
+    ),
+  );
+}
+
+void showActiveWorkoutBottomSheet(BuildContext context, UserProvider provider) {
+  final activeName = provider.activeWorkoutName;
+  if (activeName == null) return;
+  final workout = presetWorkouts.firstWhere(
+    (w) => w.name == activeName,
+    orElse: () => presetWorkouts.first,
+  );
+  showWorkoutBottomSheet(context, provider, workout);
 }

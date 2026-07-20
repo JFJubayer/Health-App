@@ -406,4 +406,91 @@ class PersistenceService {
     final Map<String, IngredientPrice> map = {for (var p in prices) p.id: p};
     await _bdIngredientPriceBox?.putAll(map);
   }
+
+  static const String _keyActiveWorkoutName = 'active_workout_name';
+  static const String _keyActiveWorkoutIcon = 'active_workout_icon';
+  static const String _keyActiveWorkoutCaloriesPerMinute = 'active_workout_cpm';
+  static const String _keyActiveWorkoutStartTime = 'active_workout_start';
+  static const String _keyActiveWorkoutDurationMinutes = 'active_workout_duration';
+
+  static Future<void> saveActiveWorkoutName(String? name) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (name == null) {
+      await prefs.remove(_keyActiveWorkoutName);
+    } else {
+      await prefs.setString(_keyActiveWorkoutName, name);
+    }
+  }
+
+  static Future<String?> getActiveWorkoutName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyActiveWorkoutName);
+  }
+
+  static Future<void> saveActiveWorkoutIcon(String? icon) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (icon == null) {
+      await prefs.remove(_keyActiveWorkoutIcon);
+    } else {
+      await prefs.setString(_keyActiveWorkoutIcon, icon);
+    }
+  }
+
+  static Future<String?> getActiveWorkoutIcon() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyActiveWorkoutIcon);
+  }
+
+  static Future<void> saveActiveWorkoutCaloriesPerMinute(double? cpm) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (cpm == null) {
+      await prefs.remove(_keyActiveWorkoutCaloriesPerMinute);
+    } else {
+      await prefs.setDouble(_keyActiveWorkoutCaloriesPerMinute, cpm);
+    }
+  }
+
+  static Future<double?> getActiveWorkoutCaloriesPerMinute() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_keyActiveWorkoutCaloriesPerMinute);
+  }
+
+  static Future<void> saveActiveWorkoutStartTime(DateTime? startTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (startTime == null) {
+      await prefs.remove(_keyActiveWorkoutStartTime);
+    } else {
+      await prefs.setString(_keyActiveWorkoutStartTime, startTime.toIso8601String());
+    }
+  }
+
+  static Future<DateTime?> getActiveWorkoutStartTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_keyActiveWorkoutStartTime);
+    if (data == null) return null;
+    return DateTime.tryParse(data);
+  }
+
+  static Future<void> saveActiveWorkoutDurationMinutes(int? duration) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (duration == null) {
+      await prefs.remove(_keyActiveWorkoutDurationMinutes);
+    } else {
+      await prefs.setInt(_keyActiveWorkoutDurationMinutes, duration);
+    }
+  }
+
+  static Future<int?> getActiveWorkoutDurationMinutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyActiveWorkoutDurationMinutes);
+  }
+
+  static Future<void> clearActiveWorkout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyActiveWorkoutName);
+    await prefs.remove(_keyActiveWorkoutIcon);
+    await prefs.remove(_keyActiveWorkoutCaloriesPerMinute);
+    await prefs.remove(_keyActiveWorkoutStartTime);
+    await prefs.remove(_keyActiveWorkoutDurationMinutes);
+  }
 }

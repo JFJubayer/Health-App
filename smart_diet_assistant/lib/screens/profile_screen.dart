@@ -77,7 +77,7 @@ class ProfileScreen extends StatelessWidget {
               },
               child: const Text('Reset Profile & Goals'),
             ).animate().fadeIn(delay: 650.ms),
-            const SizedBox(height: 40),
+            const SizedBox(height: 120),
           ],
         ),
       ),
