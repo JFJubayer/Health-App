@@ -15,6 +15,7 @@ import '../widgets/water_goal_dialog.dart';
 import '../widgets/calorie_graph_widget.dart';
 import '../widgets/glass_card.dart';
 import 'bazaar_prices_screen.dart';
+import 'workout_history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -99,6 +100,21 @@ class ProfileScreen extends StatelessWidget {
                     title: 'Achievements & Badges',
                     value: '$badgeCount unlocked',
                     onTap: () => _showBadgesModal(context, userProvider),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.fitness_center_outlined,
+                    title: 'Workout History & Burn Tracker',
+                    value: '${userProvider.burnedCalories} kcal today',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WorkoutHistoryScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   // Section Divider Line
@@ -275,7 +291,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'User Profile',
+          user.name,
           style: GoogleFonts.outfit(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -863,7 +879,6 @@ class ProfileScreen extends StatelessWidget {
               _buildBmiLegendRow(context, 'Normal Weight', '18.5 - 24.9', Colors.green),
               _buildBmiLegendRow(context, 'Overweight', '25.0 - 29.9', Colors.orange),
               _buildBmiLegendRow(context, 'Obesity', '≥ 30.0', Colors.red),
-              const SizedBox(height: 24),
             ],
           ),
         );

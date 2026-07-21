@@ -993,6 +993,23 @@ class UserProvider with ChangeNotifier {
     return result;
   }
 
+  Future<List<Map<String, dynamic>>> getWorkoutHistory(int days) async {
+    final List<Map<String, dynamic>> result = [];
+    final now = DateTime.now();
+    for (int i = days - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final dateStr = date.toIso8601String().substring(0, 10);
+      final logs = await PersistenceService.getWorkoutLogs(dateStr);
+      final totalBurned = logs.fold<int>(0, (sum, l) => sum + ((l['calories'] as num?)?.toInt() ?? 0));
+      result.add({
+        'date': date,
+        'logs': logs,
+        'totalBurned': totalBurned,
+      });
+    }
+    return result;
+  }
+
   Future<void> regenerateUnlockedSlots(DateTime weekStart) async {
     final existingPlans = PersistenceService.getAllDayPlansInRange(
       weekStart,

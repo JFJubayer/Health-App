@@ -414,13 +414,6 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> with TickerProviderStat
             ],
           ),
 
-          // Today's workout log summary
-          if (Provider.of<UserProvider>(context, listen: false).workoutLogs.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Divider(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.15)),
-            const SizedBox(height: 8),
-            _buildTodayLogSummary(context),
-          ],
         ],
       ),
     );
