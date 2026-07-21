@@ -109,62 +109,16 @@ class _MealsScreenState extends State<MealsScreen> {
               // Search input + notification header
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                        ],
-                      ),
-                      child: TextField(
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search',
-                          hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-                          prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
-                          border: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Text(
+                  //   'Recipes',
+                  //   style: GoogleFonts.outfit(
+                  //     fontSize: 22,
+                  //     fontWeight: FontWeight.bold,
+                  //     color: theme.colorScheme.onSurface,
+                  //   ),
+                  // ),
+                  
                   const SizedBox(width: 12),
-                  // Notification Button
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.onSurface),
-                      ),
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF79E74),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
 
@@ -228,57 +182,39 @@ class _MealsScreenState extends State<MealsScreen> {
               // Trending Recipes Header
               Row(
                 children: [
-                  Text(
-                    'Trending Recipes',
-                    style: GoogleFonts.outfit(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF79E74),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      'See All',
-                      style: GoogleFonts.outfit(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: TextField(
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                          prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
                   ),
+                  
+                  const SizedBox(width: 6),
                 ],
               ),
 
               const SizedBox(height: 12),
 
-              // Featured Card: Quinoa Veggie Bowl
-              if (_searchQuery.isEmpty && (_selectedCategory == 'All' || _selectedCategory == 'Vegan')) ...[
-                _buildFeaturedRecipeCard(context),
-                const SizedBox(height: 24),
-              ],
-
-              // Filtered Recipe List
-              Text(
-                'Recipes for you',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              
               if (filteredRecipes.isEmpty)
                 Center(
                   child: Padding(
