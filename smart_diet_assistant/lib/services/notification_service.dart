@@ -20,6 +20,10 @@ class NotificationService {
   static const String weightChannelName = 'Weight Management Alerts';
   static const String weightChannelDescription = 'Alerts and tips for weight management.';
 
+  static const String workoutChannelId = 'workout_reminders';
+  static const String workoutChannelName = 'Workout Reminders';
+  static const String workoutChannelDescription = 'Reminders for active workouts.';
+
   static UserProvider? _userProvider;
   static bool _timezoneReady = false;
 
@@ -105,6 +109,13 @@ class NotificationService {
       importance: Importance.high,
     );
 
+    const dynamic workoutChannel = AndroidNotificationChannel(
+      workoutChannelId,
+      workoutChannelName,
+      description: workoutChannelDescription,
+      importance: Importance.high,
+    );
+
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     
@@ -112,6 +123,7 @@ class NotificationService {
       await androidImplementation.createNotificationChannel(channel);
       await androidImplementation.createNotificationChannel(fastingChannel);
       await androidImplementation.createNotificationChannel(weightChannel);
+      await androidImplementation.createNotificationChannel(workoutChannel);
     }
   }
 
@@ -346,5 +358,45 @@ class NotificationService {
       notificationDetails: platformChannelSpecifics,
       payload: 'test',
     );
+  }
+
+  static Future<void> scheduleWorkoutEndNotification(String workoutName, DateTime startTime, int durationMinutes) async {
+    if (!_supportsScheduledNotifications) return;
+    _ensureTimezoneReady();
+    
+    await cancelWorkoutNotifications();
+    
+    DateTime endTime = startTime.add(Duration(minutes: durationMinutes));
+    if (endTime.isBefore(DateTime.now())) return;
+    
+    const dynamic androidDetails = AndroidNotificationDetails(
+      workoutChannelId,
+      workoutChannelName,
+      channelDescription: workoutChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    
+    const dynamic iosDetails = DarwinNotificationDetails();
+    
+    String title = 'Workout Complete! 🎉';
+    String body = 'Your $durationMinutes-minute $workoutName session is complete. Great job!';
+    
+    await _notificationsPlugin.zonedSchedule(
+      id: 777,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(endTime, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+  }
+
+  static Future<void> cancelWorkoutNotifications() async {
+    if (kIsWeb) return;
+    await _notificationsPlugin.cancel(id: 777);
   }
 }

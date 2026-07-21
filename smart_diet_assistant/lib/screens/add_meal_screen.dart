@@ -127,7 +127,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Smart Meal Builder', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text('Add Meals', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         elevation: 0,
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
@@ -147,11 +147,11 @@ class _AddMealScreenState extends State<AddMealScreen> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: _buildFoodSearch(emerald)),
+                  Expanded(child: _buildFoodSearch(const Color.fromARGB(255, 0, 0, 0))),
                   const SizedBox(width: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: emerald,
+                      color: Color(0xFFF79E74),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: IconButton(
@@ -176,20 +176,20 @@ class _AddMealScreenState extends State<AddMealScreen> {
               
               const SizedBox(height: 24),
               if (_addedComponents.isNotEmpty) ...[
-                Text('Your Plate', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: emerald)),
+                Text('Your Plate', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFFF79E74))),
                 const SizedBox(height: 12),
-                ...List.generate(_addedComponents.length, (index) => _buildComponentTile(index, emerald)),
+                ...List.generate(_addedComponents.length, (index) => _buildComponentTile(index, const Color(0xFFF79E74))),
                 const Divider(height: 40),
               ],
 
-              _buildNutritionalSummary(emerald),
+              _buildNutritionalSummary(const Color.fromARGB(255, 0, 0, 0)),
               
               const SizedBox(height: 32),
               _buildLabel('Meal Name (Manual Edit)'),
               _buildNameField(emerald),
               
               const SizedBox(height: 40),
-              _buildSubmitButton(emerald),
+              _buildSubmitButton(const Color.fromARGB(255,247,158,116)),
             ],
           ),
         ),
@@ -341,7 +341,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Total Nutrition', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
-              Text('${_totalCalories.toInt()} kcal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 22, color: emerald)),
+              Text('${_totalCalories.toInt()} kcal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 22, color: const Color(0xFFF79E74))),
             ],
           ),
           const SizedBox(height: 16),

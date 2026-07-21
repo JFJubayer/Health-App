@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
 import '../services/health_service.dart';
@@ -43,6 +44,19 @@ class UserProvider with ChangeNotifier {
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
   Map<String, SugarReading> _sugarReadings = {};
+  int _burnedCalories = 0;
+  List<Map<String, dynamic>> _workoutLogs = [];
+  int _workoutDailyTarget = 300;
+
+  String? _activeWorkoutName;
+  String? _activeWorkoutIcon;
+  double? _activeWorkoutCaloriesPerMinute;
+  DateTime? _activeWorkoutStartTime;
+  int? _activeWorkoutDurationMinutes;
+  bool _isActiveWorkoutRunning = false;
+  bool _isActiveWorkoutComplete = false;
+  int _activeWorkoutElapsedSeconds = 0;
+  Timer? _activeWorkoutTimer;
 
   Map<String, IngredientPrice> _bdIngredientPrices = {};
   List<FoodItem> _bdFoodItems = [];
@@ -89,6 +103,19 @@ class UserProvider with ChangeNotifier {
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
   List<ShoppingItem> get customShoppingItems => _customShoppingItems;
   Map<String, SugarReading> get sugarReadings => _sugarReadings;
+  int get burnedCalories => _burnedCalories;
+  List<Map<String, dynamic>> get workoutLogs => _workoutLogs;
+  int get workoutDailyTarget => _workoutDailyTarget;
+  int get netCalories => totalConsumedCalories - _burnedCalories;
+
+  String? get activeWorkoutName => _activeWorkoutName;
+  String? get activeWorkoutIcon => _activeWorkoutIcon;
+  double? get activeWorkoutCaloriesPerMinute => _activeWorkoutCaloriesPerMinute;
+  DateTime? get activeWorkoutStartTime => _activeWorkoutStartTime;
+  int? get activeWorkoutDurationMinutes => _activeWorkoutDurationMinutes;
+  bool get isActiveWorkoutRunning => _isActiveWorkoutRunning;
+  bool get isActiveWorkoutComplete => _isActiveWorkoutComplete;
+  int get activeWorkoutElapsedSeconds => _activeWorkoutElapsedSeconds;
 
   SugarReading? getSugarReading(String mealId, String dateStr) {
     return _sugarReadings['${mealId}_$dateStr'];
@@ -162,6 +189,158 @@ class UserProvider with ChangeNotifier {
   double get totalConsumedProtein => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.protein);
   double get totalConsumedCarbs => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.carbs);
   double get totalConsumedFat => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.fat);
+
+  void burnCalories(int calories) {
+    _burnedCalories += calories;
+    PersistenceService.saveBurnedCalories(_burnedCalories);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  void resetBurnedCalories() {
+    _burnedCalories = 0;
+    _workoutLogs = [];
+    PersistenceService.saveBurnedCalories(_burnedCalories);
+    PersistenceService.saveWorkoutLogs(_todayDateStr, _workoutLogs);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  Future<void> logWorkout({
+    required String name,
+    required int durationMinutes,
+    required int caloriesBurned,
+    String? icon,
+  }) async {
+    _workoutLogs.add({
+      'name': name,
+      'duration': durationMinutes,
+      'calories': caloriesBurned,
+      'icon': icon ?? '🏋️',
+      'time': DateTime.now().toIso8601String(),
+    });
+    _burnedCalories += caloriesBurned;
+    await PersistenceService.saveBurnedCalories(_burnedCalories);
+    await PersistenceService.saveWorkoutLogs(_todayDateStr, _workoutLogs);
+    _saveCurrentDailySummary();
+    notifyListeners();
+  }
+
+  void _startLocalTimer() {
+    _activeWorkoutTimer?.cancel();
+    _activeWorkoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_activeWorkoutStartTime == null || _activeWorkoutDurationMinutes == null) {
+        timer.cancel();
+        return;
+      }
+      final elapsed = DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
+      final total = _activeWorkoutDurationMinutes! * 60;
+      if (elapsed >= total) {
+        timer.cancel();
+        _isActiveWorkoutRunning = false;
+        _isActiveWorkoutComplete = true;
+        _activeWorkoutElapsedSeconds = total;
+      } else {
+        _isActiveWorkoutRunning = true;
+        _isActiveWorkoutComplete = false;
+        _activeWorkoutElapsedSeconds = elapsed;
+      }
+      notifyListeners();
+    });
+  }
+
+  Future<void> startWorkout(String name, String icon, double caloriesPerMinute, int durationMinutes) async {
+    _activeWorkoutName = name;
+    _activeWorkoutIcon = icon;
+    _activeWorkoutCaloriesPerMinute = caloriesPerMinute;
+    _activeWorkoutStartTime = DateTime.now();
+    _activeWorkoutDurationMinutes = durationMinutes;
+    _isActiveWorkoutRunning = true;
+    _isActiveWorkoutComplete = false;
+    _activeWorkoutElapsedSeconds = 0;
+
+    await PersistenceService.saveActiveWorkoutName(name);
+    await PersistenceService.saveActiveWorkoutIcon(icon);
+    await PersistenceService.saveActiveWorkoutCaloriesPerMinute(caloriesPerMinute);
+    await PersistenceService.saveActiveWorkoutStartTime(_activeWorkoutStartTime);
+    await PersistenceService.saveActiveWorkoutDurationMinutes(durationMinutes);
+
+    // Schedule background notification
+    await NotificationService.scheduleWorkoutEndNotification(name, _activeWorkoutStartTime!, durationMinutes);
+
+    _startLocalTimer();
+    notifyListeners();
+  }
+
+  Future<void> stopWorkoutEarly() async {
+    if (_activeWorkoutStartTime != null) {
+      final elapsed = DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
+      final actualMinutes = (elapsed / 60).ceil();
+      
+      _activeWorkoutTimer?.cancel();
+      _isActiveWorkoutRunning = false;
+      _isActiveWorkoutComplete = true;
+      _activeWorkoutElapsedSeconds = elapsed;
+
+      // Persist the completed-early state by setting the duration to match the actual elapsed minutes
+      _activeWorkoutDurationMinutes = actualMinutes;
+      await PersistenceService.saveActiveWorkoutDurationMinutes(actualMinutes);
+      
+      // Update notification
+      await NotificationService.cancelWorkoutNotifications();
+      
+      notifyListeners();
+    }
+  }
+
+  Future<void> completeWorkout() async {
+    if (_activeWorkoutStartTime != null) {
+      final total = (_activeWorkoutDurationMinutes ?? 0) * 60;
+      final elapsed = _isActiveWorkoutRunning 
+          ? DateTime.now().difference(_activeWorkoutStartTime!).inSeconds
+          : _activeWorkoutElapsedSeconds;
+      final finalElapsed = elapsed.clamp(0, total);
+      
+      final actualMinutes = (finalElapsed / 60).ceil();
+      final caloriesBurned = ((_activeWorkoutCaloriesPerMinute ?? 0) * (finalElapsed / 60)).toInt();
+
+      await logWorkout(
+        name: _activeWorkoutName ?? 'Workout',
+        durationMinutes: actualMinutes,
+        caloriesBurned: caloriesBurned,
+        icon: _activeWorkoutIcon,
+      );
+    }
+    await cancelActiveWorkout();
+  }
+
+  Future<void> cancelActiveWorkout() async {
+    _activeWorkoutTimer?.cancel();
+    _activeWorkoutName = null;
+    _activeWorkoutIcon = null;
+    _activeWorkoutCaloriesPerMinute = null;
+    _activeWorkoutStartTime = null;
+    _activeWorkoutDurationMinutes = null;
+    _isActiveWorkoutRunning = false;
+    _isActiveWorkoutComplete = false;
+    _activeWorkoutElapsedSeconds = 0;
+
+    await PersistenceService.clearActiveWorkout();
+    await NotificationService.cancelWorkoutNotifications();
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _activeWorkoutTimer?.cancel();
+    super.dispose();
+  }
+
+  void setWorkoutDailyTarget(int calories) {
+    _workoutDailyTarget = calories;
+    PersistenceService.saveWorkoutDailyTarget(calories);
+    notifyListeners();
+  }
 
   void addCustomShoppingItem(ShoppingItem item) {
     _customShoppingItems.add(item);
@@ -283,7 +462,34 @@ class UserProvider with ChangeNotifier {
         
         debugPrint('UserProvider: Loading sugar readings...');
         _sugarReadings = await PersistenceService.getSugarReadings();
+
+        debugPrint('UserProvider: Loading workout data...');
+        _burnedCalories = await PersistenceService.getBurnedCalories();
+        _workoutLogs = await PersistenceService.getWorkoutLogs(_todayDateStr);
+        _workoutDailyTarget = await PersistenceService.getWorkoutDailyTarget();
+
+        // Load active workout data
+        _activeWorkoutName = await PersistenceService.getActiveWorkoutName();
+        _activeWorkoutIcon = await PersistenceService.getActiveWorkoutIcon();
+        _activeWorkoutCaloriesPerMinute = await PersistenceService.getActiveWorkoutCaloriesPerMinute();
+        _activeWorkoutStartTime = await PersistenceService.getActiveWorkoutStartTime();
+        _activeWorkoutDurationMinutes = await PersistenceService.getActiveWorkoutDurationMinutes();
         
+        if (_activeWorkoutStartTime != null && _activeWorkoutDurationMinutes != null) {
+          final elapsed = DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
+          final total = _activeWorkoutDurationMinutes! * 60;
+          if (elapsed >= total) {
+            _isActiveWorkoutRunning = false;
+            _isActiveWorkoutComplete = true;
+            _activeWorkoutElapsedSeconds = total;
+          } else {
+            _isActiveWorkoutRunning = true;
+            _isActiveWorkoutComplete = false;
+            _activeWorkoutElapsedSeconds = elapsed;
+            _startLocalTimer();
+          }
+        }
+
         debugPrint('UserProvider: Loading fasting data...');
         _fastingDurationHours = await PersistenceService.getFastingDuration();
         _fastingStartTime = await PersistenceService.getFastingStartTime();
@@ -390,7 +596,7 @@ class UserProvider with ChangeNotifier {
 
   void _saveCurrentDailySummary() {
     final nowStr = DateTime.now().toIso8601String().substring(0, 10);
-    PersistenceService.saveDailySummary(nowStr, totalConsumedCalories, _waterIntake);
+    PersistenceService.saveDailySummary(nowStr, totalConsumedCalories, _waterIntake, burnedCalories: _burnedCalories);
   }
 
   void addWater(int ml) {
@@ -781,6 +987,24 @@ class UserProvider with ChangeNotifier {
         'date': date,
         'calories': summary != null ? (summary['calories'] as int) : 0,
         'water': summary != null ? (summary['water'] as int) : 0,
+        'burnedCalories': summary != null ? (summary['burnedCalories'] as int? ?? 0) : 0,
+      });
+    }
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> getWorkoutHistory(int days) async {
+    final List<Map<String, dynamic>> result = [];
+    final now = DateTime.now();
+    for (int i = days - 1; i >= 0; i--) {
+      final date = now.subtract(Duration(days: i));
+      final dateStr = date.toIso8601String().substring(0, 10);
+      final logs = await PersistenceService.getWorkoutLogs(dateStr);
+      final totalBurned = logs.fold<int>(0, (sum, l) => sum + ((l['calories'] as num?)?.toInt() ?? 0));
+      result.add({
+        'date': date,
+        'logs': logs,
+        'totalBurned': totalBurned,
       });
     }
     return result;
@@ -961,6 +1185,8 @@ class UserProvider with ChangeNotifier {
     _calorieTier = '';
     _mealPlan = [];
     _fastingStartTime = null;
+    _burnedCalories = 0;
+    _workoutLogs = [];
     PersistenceService.clearAll();
     notifyListeners();
   }

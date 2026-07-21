@@ -23,24 +23,32 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<UserProvider>(context);
-    final isMainPlan = provider.isMainPlanMeal(meal.id);
+    
+    // Resolve the meal dynamically from today's plan if it exists, otherwise fallback to template
+    final resolvedMeal = provider.mealPlan.firstWhere(
+      (m) => m.id == widget.meal.id,
+      orElse: () => widget.meal,
+    );
+    
+    final isMainPlan = provider.isMainPlanMeal(resolvedMeal.id);
+    final isAlreadyInPlan = provider.mealPlan.any((m) => m.id == resolvedMeal.id);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context, isMainPlan),
+          _buildAppBar(context, isMainPlan, resolvedMeal),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildNutritionalInfo(context),
+                  _buildNutritionalInfo(context, resolvedMeal),
                   const SizedBox(height: 32),
-                  _buildIngredientList(context),
+                  _buildIngredientList(context, resolvedMeal),
                   const SizedBox(height: 32),
-                  _buildInstructions(context),
+                  _buildInstructions(context, resolvedMeal),
                   const SizedBox(height: 140),
                 ],
               ),
@@ -56,43 +64,106 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
           children: [
             ElevatedButton.icon(
               onPressed: () async {
-                if (meal.isConsumed) {
-                  provider.toggleMealConsumed(meal.id);
+                if (resolvedMeal.isConsumed) {
+                  provider.toggleMealConsumed(resolvedMeal.id);
                   if (context.mounted) Navigator.pop(context);
                 } else {
-                  final rating = await showMealRatingSheet(context, meal);
-                  if (rating != null) {
-                    await provider.toggleMealConsumedWithFeedback(
-                      meal.id,
-                      satisfaction: rating,
-                    );
-                  } else {
-                    await provider.toggleMealConsumedWithFeedback(
-                      meal.id,
-                      satisfaction: 4.0,
-                    );
+                  // Automatically add recipe to today's dashboard menu if not already present
+                  if (!isAlreadyInPlan) {
+                    provider.addCustomMeal(resolvedMeal);
                   }
+
+                  // Mark consumed first with default rating
+                  await provider.toggleMealConsumedWithFeedback(
+                    resolvedMeal.id,
+                    satisfaction: 4.0,
+                  );
+                  if (!context.mounted) return;
+
+                  // Show small prompt asking if user wants to rate
+                  final wantsToRate = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) {
+                      final dlgTheme = Theme.of(ctx);
+                      return AlertDialog(
+                        backgroundColor: dlgTheme.scaffoldBackgroundColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Meal Logged!',
+                              style: GoogleFonts.outfit(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: dlgTheme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Would you like to rate this meal?',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                fontSize: 14,
+                                color: dlgTheme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Skip', style: GoogleFonts.outfit(color: Colors.grey)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(
+                              'Rate Now',
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                color: dlgTheme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (wantsToRate == true && context.mounted) {
+                    final rating = await showMealRatingSheet(context, resolvedMeal);
+                    if (rating != null && context.mounted) {
+                      await provider.toggleMealConsumedWithFeedback(
+                        resolvedMeal.id,
+                        satisfaction: rating,
+                      );
+                    }
+                  }
+
                   if (context.mounted) Navigator.pop(context);
                 }
               },
               icon: Icon(
-                meal.isConsumed ? Icons.undo : Icons.check_circle_outline,
+                resolvedMeal.isConsumed ? Icons.undo : Icons.check_circle_outline,
               ),
               label: Text(
-                meal.isConsumed ? 'Mark as Pending' : 'Mark as Consumed',
+                resolvedMeal.isConsumed ? 'Mark as Pending' : 'Mark as Consumed',
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: meal.isConsumed
+                backgroundColor: resolvedMeal.isConsumed
                     ? Colors.grey[800]
                     : Theme.of(context).colorScheme.primary,
                 minimumSize: const Size(double.infinity, 52),
               ),
             ),
-            if (!meal.isConsumed) ...[
+            if (!resolvedMeal.isConsumed) ...[
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () async {
@@ -125,7 +196,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     ),
                   );
                   if (confirm == true && context.mounted) {
-                    await provider.skipMeal(meal.id);
+                    await provider.skipMeal(resolvedMeal.id);
                     if (context.mounted) Navigator.pop(context);
                   }
                 },
@@ -143,7 +214,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, bool isMainPlan) {
+  Widget _buildAppBar(BuildContext context, bool isMainPlan, MealModel meal) {
     final color = _getMealColor(meal.type);
 
     return SliverAppBar(
@@ -172,12 +243,19 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
           alignment: Alignment.center,
           children: [
             if (meal.imageUrl != null)
-              Image.network(
-                meal.imageUrl!,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              )
+              meal.imageUrl!.startsWith('assets/')
+                  ? Image.asset(
+                      meal.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
+                  : Image.network(
+                      meal.imageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    )
             else
               Container(
                 decoration: BoxDecoration(
@@ -264,7 +342,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     );
   }
 
-  Widget _buildNutritionalInfo(BuildContext context) {
+  Widget _buildNutritionalInfo(BuildContext context, MealModel meal) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -287,7 +365,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     );
   }
 
-  Widget _buildIngredientList(BuildContext context) {
+  Widget _buildIngredientList(BuildContext context, MealModel meal) {
     final hasComponents = meal.components.isNotEmpty;
 
     return Column(
@@ -355,7 +433,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
     ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.1);
   }
 
-  Widget _buildInstructions(BuildContext context) {
+  Widget _buildInstructions(BuildContext context, MealModel meal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

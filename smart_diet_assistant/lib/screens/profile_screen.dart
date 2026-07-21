@@ -15,6 +15,7 @@ import '../widgets/water_goal_dialog.dart';
 import '../widgets/calorie_graph_widget.dart';
 import '../widgets/glass_card.dart';
 import 'bazaar_prices_screen.dart';
+import 'workout_history_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -24,84 +25,220 @@ class ProfileScreen extends StatelessWidget {
     final userProvider = Provider.of<UserProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
     final user = userProvider.user;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     if (user == null) {
       return const Scaffold(body: Center(child: Text('No Data')));
     }
 
+    final bmi = HealthService.calculateBMI(user.weightKg, user.heightCm);
+    final bmiCategory = HealthService.getBMICategory(bmi);
+    final prefs = PersistenceService.getPreferences(MealFeedbackService.userId);
+    final favoriteCount = prefs?.favoriteMealIds.length ?? 0;
+    final badgeCount = userProvider.gamification.badges.length;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('My Profile', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
         child: Column(
           children: [
             _buildHeader(context, user).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-            const SizedBox(height: 24),
-            
-            // Personal Info Grid
-            Row(
-              children: [
-                Expanded(child: _buildMiniCard(context, Icons.cake, 'Age', '${user.age}', Colors.orange).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.monitor_weight, 'Weight', '${user.weightKg.toStringAsFixed(1)} kg', Colors.green).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.height, 'Height', '${user.heightCm.toInt()} cm', Colors.blue).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                Expanded(child: _buildMiniCard(context, Icons.person_outline, 'Gender', user.gender, Colors.purple).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                // Expanded(child: _buildMiniCard(context, Icons.person_outline, 'Gender', user.gender, Colors.purple).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1)),
-                const SizedBox(width: 12),
-                if (user.conditions.isNotEmpty)
-                  Expanded(
-                    child: _buildMiniCard(context, Icons.medical_information, 'Conditions', user.conditions.join(', '), Colors.red)
-                      .animate().fadeIn(delay: 300.ms).slideY(begin: 0.1),
-                  )
-                else
-                  Expanded(child: const SizedBox()),
-              ],
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            _buildBmiSection(context, user).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1),
-            const SizedBox(height: 24),
-            
-            _buildMetabolicGrid(context, userProvider).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
-            const SizedBox(height: 24),
-            
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: CalorieGraphWidget(userProvider: userProvider),
-            ).animate().fadeIn(delay: 450.ms).slideY(begin: 0.1),
-            const SizedBox(height: 24),
-            
-            _buildFavoritesSection(context).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
-            const SizedBox(height: 24),
-            
-            _buildBadgesSection(context, userProvider).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1),
-            const SizedBox(height: 24),
-            
-            _buildPreferencesSection(context, userProvider, themeProvider).animate().fadeIn(delay: 600.ms).slideY(begin: 0.1),
-            const SizedBox(height: 40),
-            
-            ElevatedButton(
-              onPressed: () {
-                userProvider.clearUser();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const InputScreen()),
-                  (route) => false,
-                );
-              },
-              child: const Text('Reset Profile & Goals'),
-            ).animate().fadeIn(delay: 650.ms),
-            const SizedBox(height: 40),
+            // Minimalist Container for Menu List
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // --- SECTION 1: Health & Performance ---
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.insights_outlined,
+                    title: 'Metabolic & Calorie Insights',
+                    value: '${userProvider.calorieTarget.toInt()} kcal',
+                    onTap: () => _showMetabolicInsightsModal(context, userProvider),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.monitor_weight_outlined,
+                    title: 'BMI & Body Health',
+                    value: '${bmi.toStringAsFixed(1)} • $bmiCategory',
+                    onTap: () => _showBmiInfoModal(context),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.favorite_border_rounded,
+                    title: 'Favorite Meals',
+                    value: '$favoriteCount saved',
+                    onTap: () => _showFavoritesModal(context),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.emoji_events_outlined,
+                    title: 'Achievements & Badges',
+                    value: '$badgeCount unlocked',
+                    onTap: () => _showBadgesModal(context, userProvider),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.fitness_center_outlined,
+                    title: 'Workout History & Burn Tracker',
+                    value: '${userProvider.burnedCalories} kcal today',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WorkoutHistoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Section Divider Line
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1.5,
+                      color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+                    ),
+                  ),
+
+                  // --- SECTION 2: Preferences & Settings ---
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.water_drop_outlined,
+                    title: 'Daily Water Goal',
+                    value: '${userProvider.waterGoal} ml',
+                    onTap: () => showWaterGoalSheet(context),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.notifications_active_outlined,
+                    title: 'Hydration Reminders',
+                    trailing: Switch(
+                      value: userProvider.hydrationRemindersEnabled,
+                      onChanged: userProvider.setHydrationRemindersEnabled,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.storefront_outlined,
+                    title: 'Bazaar Ingredient Prices',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BazaarPricesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (HealthService.isHighBmi(user.weightKg, user.heightCm)) ...[
+                    _buildDivider(context),
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.tune_outlined,
+                      title: 'Weight Loss Plan',
+                      value: user.weightManagementEnabled
+                          ? '-${user.weightDeficitCal.toInt()} kcal'
+                          : 'Disabled',
+                      onTap: () => _showDeficitAdjustmentDialog(context, userProvider),
+                    ),
+                  ],
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: themeProvider.isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    title: 'Dark Mode',
+                    trailing: Switch(
+                      value: themeProvider.isDarkMode,
+                      onChanged: (val) => themeProvider.toggleTheme(),
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.7),
+                    ),
+                  ),
+
+                  // Section Divider Line
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1.5,
+                      color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
+                    ),
+                  ),
+
+                  // --- SECTION 3: Account & System ---
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.send_outlined,
+                    title: 'Send Test Notification',
+                    onTap: () => NotificationService.showTestNotification(),
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.edit_outlined,
+                    title: 'Edit Personal Details',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InputScreen(
+                            initialUser: user,
+                            isEditMode: true,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDivider(context),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.logout_rounded,
+                    title: 'Reset Profile & Goals',
+                    titleColor: Colors.redAccent,
+                    iconColor: Colors.redAccent,
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      color: Colors.redAccent,
+                      size: 20,
+                    ),
+                    onTap: () => _showResetConfirmationDialog(context, userProvider),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05),
+
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -109,63 +246,364 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, UserModel user) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Center(
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Icon(
-                  user.gender == 'Male' ? Icons.face_rounded : Icons.face_3_rounded,
-                  size: 55,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3), width: 3),
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => InputScreen(
-                        initialUser: user,
-                        isEditMode: true,
-                      ),
+              child: Icon(
+                user.gender == 'Male' ? Icons.face_rounded : Icons.face_3_rounded,
+                size: 48,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => InputScreen(
+                      initialUser: user,
+                      isEditMode: true,
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.edit, color: Colors.white, size: 16),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.edit, color: Colors.white, size: 14),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          user.name,
+          style: GoogleFonts.outfit(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${user.age} yrs  •  ${user.weightKg.toStringAsFixed(1)} kg  •  ${user.heightCm.toInt()} cm  •  ${user.gender}',
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    String? value,
+    Widget? trailing,
+    VoidCallback? onTap,
+    Color? iconColor,
+    Color? titleColor,
+  }) {
+    final theme = Theme.of(context);
+    final effectiveIconColor = iconColor ?? theme.colorScheme.onSurface;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      leading: Icon(
+        icon,
+        color: effectiveIconColor,
+        size: 22,
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.outfit(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: titleColor ?? theme.colorScheme.onSurface,
+        ),
+      ),
+      trailing: trailing ??
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (value != null) ...[
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant,
+                size: 20,
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Welcome Back!',
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-        ),
-        Text(
-          'Your go to place for health tracking.',
-          style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      ],
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildDivider(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: 52,
+      endIndent: 16,
+      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+    );
+  }
+
+  void _showMetabolicInsightsModal(BuildContext context, UserProvider provider) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Metabolic & Calorie Insights',
+                      style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildMetabolicGrid(context, provider),
+                const SizedBox(height: 20),
+                Text(
+                  '7-Day Calorie Intake',
+                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface),
+                ),
+                const SizedBox(height: 12),
+                GlassCard(
+                  padding: const EdgeInsets.all(16),
+                  child: CalorieGraphWidget(userProvider: provider),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFavoritesModal(BuildContext context) {
+    final theme = Theme.of(context);
+    final prefs = PersistenceService.getPreferences(MealFeedbackService.userId);
+    final favoriteIds = prefs?.favoriteMealIds ?? [];
+    final ratings = prefs?.mealRatings ?? {};
+    final templates = PersistenceService.getAllTemplates();
+    final templateMap = {for (var t in templates) t.id: t};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Favorite Meals',
+                    style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (favoriteIds.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text(
+                      'Rate meals 4.5+ when you consume them to auto-favorite.',
+                      style: GoogleFonts.outfit(fontSize: 14, color: theme.colorScheme.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: favoriteIds.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final id = favoriteIds[index];
+                      final template = templateMap[id];
+                      if (template == null) return const SizedBox.shrink();
+                      final meal = DietService.resolveMealModel(template);
+                      final rating = ratings[id];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.favorite, color: theme.colorScheme.primary, size: 20),
+                        ),
+                        title: Text(meal.name, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600)),
+                        subtitle: Text('${meal.calories} kcal', style: GoogleFonts.outfit(fontSize: 13)),
+                        trailing: rating != null
+                            ? Chip(
+                                backgroundColor: theme.colorScheme.surface,
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      rating.toStringAsFixed(1),
+                                      style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                visualDensity: VisualDensity.compact,
+                              )
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showBadgesModal(BuildContext context, UserProvider provider) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Achievements & Badges',
+                    style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildBadgesSection(context, provider),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showResetConfirmationDialog(BuildContext context, UserProvider userProvider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          title: Text('Reset Profile & Goals?', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: Text(
+            'Are you sure you want to reset your profile and goals? This action cannot be undone.',
+            style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                userProvider.clearUser();
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const InputScreen()),
+                  (route) => false,
+                );
+              },
+              child: Text('Reset', style: GoogleFonts.outfit(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -210,7 +648,7 @@ class ProfileScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12, right: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 12, right: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -296,122 +734,22 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFavoritesSection(BuildContext context) {
-    final prefs = PersistenceService.getPreferences(MealFeedbackService.userId);
-    final favoriteIds = prefs?.favoriteMealIds ?? [];
-    final ratings = prefs?.mealRatings ?? {};
-
-    final templates = PersistenceService.getAllTemplates();
-    final templateMap = {for (var t in templates) t.id: t};
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12, right: 8),
-          child: Text(
-            'Favorite Meals',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-        GlassCard(
-          padding: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (favoriteIds.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    'Rate meals 4.5+ when you consume them to auto-favorite.',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                )
-              else
-                ...favoriteIds.map((id) {
-                  final template = templateMap[id];
-                  if (template == null) return const SizedBox.shrink();
-                  final meal = DietService.resolveMealModel(template);
-                  final rating = ratings[id];
-                  return ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.favorite,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(meal.name, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                      '${meal.calories} kcal',
-                      style: GoogleFonts.outfit(fontSize: 13),
-                    ),
-                    trailing: rating != null
-                        ? Chip(
-                            backgroundColor: Theme.of(context).colorScheme.surface,
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 14),
-                                const SizedBox(width: 4),
-                                Text(
-                                  rating.toStringAsFixed(1),
-                                  style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            visualDensity: VisualDensity.compact,
-                          )
-                        : null,
-                  );
-                }),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBadgesSection(BuildContext context, UserProvider provider) {
     final gamification = provider.gamification;
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Text(
-            'Achievements',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-          ),
-        ),
-        GlassCard(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 3,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            children: [
-              _buildBadgeIcon(context, 'Consistency King', Icons.local_fire_department, Colors.orange, gamification.badges.contains('Consistency King')),
-              _buildBadgeIcon(context, 'Hydration Hero', Icons.water_drop, Colors.blue, gamification.badges.contains('Hydration Hero')),
-              _buildBadgeIcon(context, 'Nutrition Master', Icons.restaurant, Colors.green, gamification.badges.contains('Nutrition Master')),
-            ],
-          ),
-        ),
-      ],
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 3,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        children: [
+          _buildBadgeIcon(context, 'Consistency King', Icons.local_fire_department, Colors.orange, gamification.badges.contains('Consistency King')),
+          _buildBadgeIcon(context, 'Hydration Hero', Icons.water_drop, Colors.blue, gamification.badges.contains('Hydration Hero')),
+          _buildBadgeIcon(context, 'Nutrition Master', Icons.restaurant, Colors.green, gamification.badges.contains('Nutrition Master')),
+        ],
+      ),
     );
   }
 
@@ -457,82 +795,22 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBmiSection(BuildContext context, UserModel user) {
+  void _showBmiInfoModal(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final user = userProvider.user;
+    if (user == null) return;
     final bmi = HealthService.calculateBMI(user.weightKg, user.heightCm);
     final category = HealthService.getBMICategory(bmi);
-    
+
     Color getCategoryColor(String cat) {
       if (cat == 'Underweight') return Colors.blue;
       if (cat == 'Normal Weight') return Colors.green;
       if (cat == 'Overweight') return Colors.orange;
       return Colors.red;
     }
-    
+
     final color = getCategoryColor(category);
 
-    return GlassCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Body Mass Index (BMI)',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-              ),
-              IconButton(
-                icon: Icon(Icons.info_outline, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 22),
-                onPressed: () => _showBmiInfoModal(context),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    bmi.toStringAsFixed(1),
-                    style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: color),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Your BMI indicates you are',
-                      style: GoogleFonts.outfit(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      category,
-                      style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: color),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBmiInfoModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -542,30 +820,65 @@ class ProfileScreen extends StatelessWidget {
             color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(28.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('BMI Categories', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Body Mass Index (BMI)', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        bmi.toStringAsFixed(1),
+                        style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your status:',
+                          style: GoogleFonts.outfit(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          category,
+                          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
+              Text('BMI Reference Scale', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
               _buildBmiLegendRow(context, 'Underweight', '< 18.5', Colors.blue),
               _buildBmiLegendRow(context, 'Normal Weight', '18.5 - 24.9', Colors.green),
               _buildBmiLegendRow(context, 'Overweight', '25.0 - 29.9', Colors.orange),
               _buildBmiLegendRow(context, 'Obesity', '≥ 30.0', Colors.red),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: Text('Got it', style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
             ],
           ),
         );
@@ -575,173 +888,20 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildBmiLegendRow(BuildContext context, String category, String range, Color color) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              Container(width: 14, height: 14, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-              const SizedBox(width: 16),
-              Text(category, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
+              Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+              const SizedBox(width: 14),
+              Text(category, style: GoogleFonts.outfit(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),
             ],
           ),
-          Text(range, style: GoogleFonts.outfit(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(range, style: GoogleFonts.outfit(fontSize: 15, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
-    );
-  }
-
-  Widget _buildPreferencesSection(BuildContext context, UserProvider userProvider, ThemeProvider themeProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 12),
-          child: Text(
-            'Preferences',
-            style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
-          ),
-        ),
-        GlassCard(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            children: [
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.notifications_active_outlined, color: Colors.blue, size: 22),
-                ),
-                title: Text('Hydration Reminders', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                subtitle: Text('Actionable alerts', style: GoogleFonts.outfit(fontSize: 13)),
-                trailing: Switch(
-                  value: userProvider.hydrationRemindersEnabled,
-                  onChanged: userProvider.setHydrationRemindersEnabled,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                ),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.cyan.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.water_drop_outlined, color: Colors.cyan, size: 22),
-                ),
-                title: Text('Daily Water Goal', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                subtitle: Text('${userProvider.waterGoal} ml', style: GoogleFonts.outfit(fontSize: 13)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => showWaterGoalSheet(context),
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.store_mall_directory_outlined, color: Colors.green, size: 22),
-                ),
-                title: Text('Bazaar Prices', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                subtitle: Text('Edit ingredient costs (BDT)', style: GoogleFonts.outfit(fontSize: 13)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BazaarPricesScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    themeProvider.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                    color: Colors.amber,
-                    size: 22,
-                  ),
-                ),
-                title: Text('Dark Mode', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                subtitle: Text(themeProvider.isDarkMode ? 'Enabled' : 'Disabled', style: GoogleFonts.outfit(fontSize: 13)),
-                trailing: Switch(
-                  value: themeProvider.isDarkMode,
-                  onChanged: (val) {
-                    themeProvider.toggleTheme();
-                  },
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                ),
-              ),
-              if (HealthService.isHighBmi(userProvider.user!.weightKg, userProvider.user!.heightCm)) ...[
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.scale_rounded, color: Colors.orange, size: 22),
-                  ),
-                  title: Text('Weight Loss Plan', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                  subtitle: Text(userProvider.user!.weightManagementEnabled ? 'Active deficit' : 'Disabled (Maintenance)', style: GoogleFonts.outfit(fontSize: 13)),
-                  trailing: Switch(
-                    value: userProvider.user!.weightManagementEnabled,
-                    onChanged: (val) {
-                      final updatedUser = userProvider.user!.copyWith(weightManagementEnabled: val);
-                      userProvider.updateUserProfile(updatedUser);
-                    },
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                  ),
-                ),
-                if (userProvider.user!.weightManagementEnabled)
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.trending_down_rounded, color: Colors.red, size: 22),
-                    ),
-                    title: Text('Calorie Deficit', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w500)),
-                    subtitle: Text('-${userProvider.user!.weightDeficitCal.toInt()} kcal/day', style: GoogleFonts.outfit(fontSize: 13)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      _showDeficitAdjustmentDialog(context, userProvider);
-                    },
-                  ),
-              ],
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: OutlinedButton.icon(
-                  onPressed: () => NotificationService.showTestNotification(),
-                  icon: const Icon(Icons.send_rounded, size: 18),
-                  label: const Text('Send Test Notification'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -809,3 +969,4 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
