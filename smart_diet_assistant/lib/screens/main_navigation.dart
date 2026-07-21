@@ -7,6 +7,7 @@ import 'meals_screen.dart';
 import 'scan_screen.dart';
 import 'workouts_screen.dart';
 import 'profile_screen.dart';
+import 'add_meal_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -95,9 +96,10 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget _buildCenterScanButton() {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _currentIndex = 2;
-        });
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AddMealScreen()),
+        );
       },
       child: Container(
         width: 50,
@@ -114,9 +116,9 @@ class _MainNavigationState extends State<MainNavigation> {
           ],
         ),
         child: const Icon(
-          Icons.center_focus_weak_rounded, // Viewport scanner icon from design
+          Icons.add_rounded,
           color: Colors.white,
-          size: 26,
+          size: 28,
         ),
       ),
     );

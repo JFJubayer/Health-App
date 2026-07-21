@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
-import 'add_meal_screen.dart';
+
 import 'weekly_plan_screen.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/segmented_calorie_arc.dart';
@@ -102,26 +102,11 @@ class DashboardScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Soft Beige Manual Entry Add Button
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddMealScreen()),
-              ),
-              child: Container(
-                width: double.infinity,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFEBE5DF),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.add,
-                  color: Color(0xFF3E3F43),
-                  size: 28,
-                ),
-              ),
-            ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+            // 7 Day Streak Counter
+            _buildStreakCounter(context, userProvider, isDark)
+                .animate()
+                .fadeIn(delay: 200.ms)
+                .slideY(begin: 0.1),
 
             const SizedBox(height: 24),
 
@@ -382,5 +367,128 @@ class DashboardScreen extends StatelessWidget {
       case MealType.dinner: return Colors.indigo;
       case MealType.snack: return Colors.teal;
     }
+  }
+
+  Widget _buildStreakCounter(BuildContext context, UserProvider userProvider, bool isDark) {
+    final streak = userProvider.gamification.currentStreak;
+    final longestStreak = userProvider.gamification.longestStreak;
+
+    // Generate rolling last 7 days ending with today.
+    final today = DateTime.now();
+    final lastActive = userProvider.gamification.lastActiveDate ?? today;
+
+    // Normalizing a date to clear time components for exact day difference calculations.
+    DateTime normalize(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+    final normalizedLastActive = normalize(lastActive);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFEBE5DF),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Color(0xFFF79E74),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$streak Day${streak == 1 ? "" : "s"} Streak',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF3E3F43),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                'Personal Best: $longestStreak days',
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white60 : const Color(0xFF7E7E82),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(7, (index) {
+              final day = today.subtract(Duration(days: 6 - index));
+              final normalizedDay = normalize(day);
+              
+              final diff = normalizedLastActive.difference(normalizedDay).inDays;
+              final isActive = normalizedDay.isBefore(normalizedLastActive) || normalizedDay.isAtSameMomentAs(normalizedLastActive)
+                  ? (diff < streak && diff >= 0)
+                  : false;
+              
+              final isToday = normalizedDay.isAtSameMomentAs(normalize(today));
+              final weekdayLetter = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
+
+              return Column(
+                children: [
+                  Text(
+                    weekdayLetter,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                      color: isToday
+                          ? (isDark ? const Color(0xFFF79E74) : const Color(0xFF3E3F43))
+                          : (isDark ? Colors.white38 : Colors.black38),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? const Color(0xFFF79E74)
+                          : (isDark ? Colors.black26 : Colors.white60),
+                      shape: BoxShape.circle,
+                      border: isToday && !isActive
+                          ? Border.all(
+                              color: const Color(0xFFF79E74).withValues(alpha: 0.5),
+                              width: 1.5,
+                            )
+                          : null,
+                    ),
+                    child: Center(
+                      child: isActive
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            )
+                          : Text(
+                              day.day.toString(),
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white30 : Colors.black38,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
+      ),
+    );
   }
 }
