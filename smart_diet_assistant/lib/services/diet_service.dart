@@ -89,6 +89,18 @@ class DietService {
         double totalCost = 0;
         final List<String> ingredientsList = [];
 
+        double? totalSodium;
+        bd.GlycemicImpact glycemic = bd.GlycemicImpact.low;
+
+        bd.ConditionFlag diabetesFlag = bd.ConditionFlag.favorable;
+        bd.ConditionFlag hypertensionFlag = bd.ConditionFlag.favorable;
+        bd.ConditionFlag pcosFlag = bd.ConditionFlag.favorable;
+
+        final List<String> diabetesNotes = [];
+        final List<String> hypertensionNotes = [];
+        final List<String> pcosNotes = [];
+        final List<String> allSteps = [];
+
         for (final food in subFoods) {
           calories += food.nutrition.calories;
           protein += food.nutrition.proteinG;
@@ -96,11 +108,63 @@ class DietService {
           fat += food.nutrition.fatG;
           totalCost += food.costBDT(prices);
 
+          // Sodium
+          if (food.sodiumMg != null) {
+            totalSodium = (totalSodium ?? 0) + food.sodiumMg!;
+          }
+
+          // Glycemic Impact
+          if (food.glycemicImpact == bd.GlycemicImpact.high) {
+            glycemic = bd.GlycemicImpact.high;
+          } else if (food.glycemicImpact == bd.GlycemicImpact.medium && glycemic != bd.GlycemicImpact.high) {
+            glycemic = bd.GlycemicImpact.medium;
+          }
+
+          // Diabetes condition flag & notes
+          if (food.conditionNotes.diabetes == bd.ConditionFlag.useCaution) {
+            diabetesFlag = bd.ConditionFlag.useCaution;
+          } else if (food.conditionNotes.diabetes == bd.ConditionFlag.neutral && diabetesFlag != bd.ConditionFlag.useCaution) {
+            diabetesFlag = bd.ConditionFlag.neutral;
+          }
+          if (food.conditionNotes.diabetesNote != null && food.conditionNotes.diabetesNote!.isNotEmpty) {
+            diabetesNotes.add('${food.nameEn}: ${food.conditionNotes.diabetesNote}');
+          }
+
+          // Hypertension condition flag & notes
+          if (food.conditionNotes.hypertension == bd.ConditionFlag.useCaution) {
+            hypertensionFlag = bd.ConditionFlag.useCaution;
+          } else if (food.conditionNotes.hypertension == bd.ConditionFlag.neutral && hypertensionFlag != bd.ConditionFlag.useCaution) {
+            hypertensionFlag = bd.ConditionFlag.neutral;
+          }
+          if (food.conditionNotes.hypertensionNote != null && food.conditionNotes.hypertensionNote!.isNotEmpty) {
+            hypertensionNotes.add('${food.nameEn}: ${food.conditionNotes.hypertensionNote}');
+          }
+
+          // PCOS condition flag & notes
+          if (food.conditionNotes.pcos == bd.ConditionFlag.useCaution) {
+            pcosFlag = bd.ConditionFlag.useCaution;
+          } else if (food.conditionNotes.pcos == bd.ConditionFlag.neutral && pcosFlag != bd.ConditionFlag.useCaution) {
+            pcosFlag = bd.ConditionFlag.neutral;
+          }
+          if (food.conditionNotes.pcosNote != null && food.conditionNotes.pcosNote!.isNotEmpty) {
+            pcosNotes.add('${food.nameEn}: ${food.conditionNotes.pcosNote}');
+          }
+
+          // Recipe preparation steps
+          if (food.prepSteps.isNotEmpty) {
+            allSteps.add('--- ${food.nameEn} ---');
+            allSteps.addAll(food.prepSteps);
+          }
+
           for (final iq in food.ingredients) {
             final price = prices[iq.ingredientId];
             final ingName = price != null ? '${price.nameEn} (${price.nameBn})' : iq.ingredientId;
             ingredientsList.add('${iq.grams.toStringAsFixed(0)}g $ingName');
           }
+        }
+
+        if (allSteps.isEmpty) {
+          allSteps.add('Serve warm as a complete meal.');
         }
 
         return MealModel(
@@ -112,11 +176,21 @@ class DietService {
           carbs: carbs,
           fat: fat,
           ingredients: ingredientsList,
-          recipeSteps: const ['Serve warm as a complete meal.'],
+          recipeSteps: allSteps,
           instructions: 'Estimated Cost: ৳${totalCost.toStringAsFixed(1)}',
           imageUrl: template.imageUrl,
           tags: ['Bangladeshi', 'Composite'],
           prepTimeMinutes: 15,
+          sodiumMg: totalSodium,
+          glycemicImpact: glycemic.name,
+          diabetesFlag: diabetesFlag.name,
+          diabetesNote: diabetesNotes.isNotEmpty ? diabetesNotes.join('; ') : null,
+          hypertensionFlag: hypertensionFlag.name,
+          hypertensionNote: hypertensionNotes.isNotEmpty ? hypertensionNotes.join('; ') : null,
+          pcosFlag: pcosFlag.name,
+          pcosNote: pcosNotes.isNotEmpty ? pcosNotes.join('; ') : null,
+          imageQuery: subFoods.map((f) => f.imageQuery).whereType<String>().join(', '),
+          category: 'riceBased', // Default category for composite meal
         );
       }
     }
@@ -139,11 +213,21 @@ class DietService {
           final ingName = price != null ? '${price.nameEn} (${price.nameBn})' : iq.ingredientId;
           return '${iq.grams.toStringAsFixed(0)}g $ingName';
         }).toList(),
-        recipeSteps: bdFood.tags,
+        recipeSteps: bdFood.prepSteps.isNotEmpty ? bdFood.prepSteps : bdFood.tags,
         instructions: 'Portion: ${bdFood.portionDescription}\nEstimated Cost: ৳${cost.toStringAsFixed(1)}',
         imageUrl: template.imageUrl,
         tags: ['Bangladeshi', ...template.tags],
         prepTimeMinutes: template.prepTimeMinutes,
+        sodiumMg: bdFood.sodiumMg,
+        glycemicImpact: bdFood.glycemicImpact.name,
+        diabetesFlag: bdFood.conditionNotes.diabetes.name,
+        diabetesNote: bdFood.conditionNotes.diabetesNote,
+        hypertensionFlag: bdFood.conditionNotes.hypertension.name,
+        hypertensionNote: bdFood.conditionNotes.hypertensionNote,
+        pcosFlag: bdFood.conditionNotes.pcos.name,
+        pcosNote: bdFood.conditionNotes.pcosNote,
+        imageQuery: bdFood.imageQuery,
+        category: bdFood.category.name,
       );
     }
 

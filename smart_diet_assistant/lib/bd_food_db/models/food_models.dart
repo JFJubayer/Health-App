@@ -3,7 +3,7 @@
 // Core data models for the Bangladeshi Food Database + cost-aware planning.
 //
 // ⚠️ HIVE TYPE ID WARNING ⚠️
-// This file registers Hive typeIds 20–26. Before merging into
+// This file registers Hive typeIds 20–29. Before merging into
 // smart_diet_assistant, check your existing @HiveType(typeId: ...)
 // declarations and shift these numbers if there's a collision.
 // Hive will silently corrupt data (or throw at runtime) if two
@@ -18,8 +18,25 @@
 //   Hive.registerAdapter(MealSlotAdapter());
 //   Hive.registerAdapter(IngredientQtyAdapter());
 //   Hive.registerAdapter(NutritionInfoAdapter());
+//   Hive.registerAdapter(GlycemicImpactAdapter());
+//   Hive.registerAdapter(ConditionFlagAdapter());
+//   Hive.registerAdapter(ConditionConsiderationsAdapter());
 //   Hive.registerAdapter(FoodItemAdapter());
 //   Hive.registerAdapter(IngredientPriceAdapter());
+//
+// ⚠️ NOT MEDICAL ADVICE ⚠️
+// `sodiumMg`, `glycemicImpact`, and `conditionNotes` on FoodItem are
+// systematic estimates derived from each dish's ingredients and cooking
+// method (refined-carb-heavy → higher glycemic impact, dried
+// fish/added-salt-heavy → higher sodium, etc.) — not values checked
+// dish-by-dish against a lab reference or reviewed by a dietitian. Treat
+// them as a reasonable starting filter, not a clinical certification.
+// Before shipping any UI copy that reads like medical guidance (e.g. "safe
+// for diabetics"), get these reviewed by a qualified dietitian, and keep
+// language in the app itself to informational framing ("lower glycemic
+// impact") rather than diagnostic framing ("diabetes-approved"). Always
+// keep a visible "consult your doctor" nudge next to condition-based
+// filtering — this dataset is a planning aid, not a substitute for one.
 
 import 'package:hive/hive.dart';
 
@@ -87,6 +104,62 @@ enum MealSlot {
   dinner,
   @HiveField(3)
   snackTime,
+}
+
+/// Coarse, ingredient-derived estimate of a portion's glycemic impact —
+/// not a lab-measured glycemic index. Rice/refined-flour/sugar-heavy
+/// dishes skew high; protein/fat/fiber-dominant or non-starchy-vegetable
+/// dishes skew low.
+@HiveType(typeId: 27)
+enum GlycemicImpact {
+  @HiveField(0)
+  low,
+  @HiveField(1)
+  medium,
+  @HiveField(2)
+  high,
+}
+
+/// A soft, non-diagnostic signal for condition-aware filtering — see the
+/// "NOT MEDICAL ADVICE" note at the top of this file before surfacing
+/// this in any UI copy.
+@HiveType(typeId: 28)
+enum ConditionFlag {
+  @HiveField(0)
+  favorable,
+  @HiveField(1)
+  neutral,
+  @HiveField(2)
+  useCaution,
+}
+
+/// Per-dish, per-condition flags + a short human-readable reason. Kept
+/// deliberately shallow (flag + one-line note, not a numeric score) so
+/// it's obvious in the UI that this is a rough planning signal, not a
+/// medical verdict.
+@HiveType(typeId: 29)
+class ConditionConsiderations {
+  @HiveField(0)
+  final ConditionFlag diabetes;
+  @HiveField(1)
+  final String? diabetesNote;
+  @HiveField(2)
+  final ConditionFlag hypertension;
+  @HiveField(3)
+  final String? hypertensionNote;
+  @HiveField(4)
+  final ConditionFlag pcos;
+  @HiveField(5)
+  final String? pcosNote;
+
+  const ConditionConsiderations({
+    required this.diabetes,
+    this.diabetesNote,
+    required this.hypertension,
+    this.hypertensionNote,
+    required this.pcos,
+    this.pcosNote,
+  });
 }
 
 /// How much of one raw ingredient a single FoodItem *portion* (see
@@ -186,6 +259,31 @@ class FoodItem extends HiveObject {
   @HiveField(11)
   final List<MealSlot> suitableSlots;
 
+  /// Short, ordered cooking steps — enough for someone to actually make
+  /// the dish, not a full restaurant-recipe writeup.
+  @HiveField(12, defaultValue: [])
+  final List<String> prepSteps;
+
+  /// Estimated sodium in mg for this portion (see file-level disclaimer).
+  @HiveField(13)
+  final double? sodiumMg;
+
+  @HiveField(14, defaultValue: GlycemicImpact.medium)
+  final GlycemicImpact glycemicImpact;
+
+  @HiveField(15, defaultValue: ConditionConsiderations(
+    diabetes: ConditionFlag.neutral,
+    hypertension: ConditionFlag.neutral,
+    pcos: ConditionFlag.neutral,
+  ))
+  final ConditionConsiderations conditionNotes;
+
+  /// A short, neutral search phrase (e.g. "aloo bhorta bangladeshi food")
+  /// for the app to use with a properly licensed image source at runtime.
+  /// Deliberately NOT a hardcoded image URL — see ai/README.md for why.
+  @HiveField(16)
+  final String? imageQuery;
+
   // NOTE: not `const` — HiveObject (the superclass) has mutable internal
   // fields (_box, _key), so subclasses can never have const constructors.
   FoodItem({
@@ -201,6 +299,15 @@ class FoodItem extends HiveObject {
     required this.isVegetarian,
     this.tags = const [],
     this.suitableSlots = const [MealSlot.lunch, MealSlot.dinner],
+    this.prepSteps = const [],
+    this.sodiumMg,
+    this.glycemicImpact = GlycemicImpact.medium,
+    this.conditionNotes = const ConditionConsiderations(
+      diabetes: ConditionFlag.neutral,
+      hypertension: ConditionFlag.neutral,
+      pcos: ConditionFlag.neutral,
+    ),
+    this.imageQuery,
   });
 
   /// Cost of ONE portion, in BDT, computed from live/current ingredient

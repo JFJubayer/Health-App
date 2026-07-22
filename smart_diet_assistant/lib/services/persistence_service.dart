@@ -23,15 +23,24 @@ class PersistenceService {
   static Box<FoodItem>? _bdFoodItemBox;
   static Box<IngredientPrice>? _bdIngredientPriceBox;
 
+  static Future<Box<T>> _openBoxSafely<T>(String name) async {
+    try {
+      return await Hive.openBox<T>(name);
+    } catch (_) {
+      await Hive.deleteBoxFromDisk(name);
+      return await Hive.openBox<T>(name);
+    }
+  }
+
   static Future<void> initHive() async {
-    _ingredientsBox = await Hive.openBox<IngredientEntity>('ingredients');
-    _templatesBox = await Hive.openBox<MealTemplateEntity>('meal_templates');
-    _dayPlansBox = await Hive.openBox<DayPlanEntity>('day_plans');
-    _mealMemoryBox = await Hive.openBox<MealMemoryEntity>('meal_memory');
-    _preferencesBox = await Hive.openBox<UserMealPreferenceEntity>('user_preferences');
-    _metaBox = await Hive.openBox<dynamic>('meta');
-    _bdFoodItemBox = await Hive.openBox<FoodItem>('bd_food_items');
-    _bdIngredientPriceBox = await Hive.openBox<IngredientPrice>('bd_ingredient_prices');
+    _ingredientsBox = await _openBoxSafely<IngredientEntity>('ingredients');
+    _templatesBox = await _openBoxSafely<MealTemplateEntity>('meal_templates');
+    _dayPlansBox = await _openBoxSafely<DayPlanEntity>('day_plans');
+    _mealMemoryBox = await _openBoxSafely<MealMemoryEntity>('meal_memory');
+    _preferencesBox = await _openBoxSafely<UserMealPreferenceEntity>('user_preferences');
+    _metaBox = await _openBoxSafely<dynamic>('meta');
+    _bdFoodItemBox = await _openBoxSafely<FoodItem>('bd_food_items');
+    _bdIngredientPriceBox = await _openBoxSafely<IngredientPrice>('bd_ingredient_prices');
   }
 
   static Future<void> setSeedVersion(int version) async {

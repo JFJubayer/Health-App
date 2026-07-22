@@ -32,4 +32,7 @@ void registerHiveAdapters() {
   registerOnce(NutritionInfoAdapter());
   registerOnce(FoodItemAdapter());
   registerOnce(IngredientPriceAdapter());
+  registerOnce(GlycemicImpactAdapter());
+  registerOnce(ConditionFlagAdapter());
+  registerOnce(ConditionConsiderationsAdapter());
 }

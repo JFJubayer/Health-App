@@ -6,6 +6,56 @@ part of 'food_models.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
+class ConditionConsiderationsAdapter
+    extends TypeAdapter<ConditionConsiderations> {
+  @override
+  final int typeId = 29;
+
+  @override
+  ConditionConsiderations read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return ConditionConsiderations(
+      diabetes: fields[0] as ConditionFlag,
+      diabetesNote: fields[1] as String?,
+      hypertension: fields[2] as ConditionFlag,
+      hypertensionNote: fields[3] as String?,
+      pcos: fields[4] as ConditionFlag,
+      pcosNote: fields[5] as String?,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, ConditionConsiderations obj) {
+    writer
+      ..writeByte(6)
+      ..writeByte(0)
+      ..write(obj.diabetes)
+      ..writeByte(1)
+      ..write(obj.diabetesNote)
+      ..writeByte(2)
+      ..write(obj.hypertension)
+      ..writeByte(3)
+      ..write(obj.hypertensionNote)
+      ..writeByte(4)
+      ..write(obj.pcos)
+      ..writeByte(5)
+      ..write(obj.pcosNote);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConditionConsiderationsAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
 class IngredientQtyAdapter extends TypeAdapter<IngredientQty> {
   @override
   final int typeId = 23;
@@ -112,13 +162,24 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
       isVegetarian: fields[9] as bool,
       tags: (fields[10] as List).cast<String>(),
       suitableSlots: (fields[11] as List).cast<MealSlot>(),
+      prepSteps: fields[12] == null ? const [] : (fields[12] as List).cast<String>(),
+      sodiumMg: fields[13] as double?,
+      glycemicImpact: fields[14] == null ? GlycemicImpact.medium : fields[14] as GlycemicImpact,
+      conditionNotes: fields[15] == null
+          ? const ConditionConsiderations(
+              diabetes: ConditionFlag.neutral,
+              hypertension: ConditionFlag.neutral,
+              pcos: ConditionFlag.neutral,
+            )
+          : fields[15] as ConditionConsiderations,
+      imageQuery: fields[16] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, FoodItem obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(17)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -142,7 +203,17 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
       ..writeByte(10)
       ..write(obj.tags)
       ..writeByte(11)
-      ..write(obj.suitableSlots);
+      ..write(obj.suitableSlots)
+      ..writeByte(12)
+      ..write(obj.prepSteps)
+      ..writeByte(13)
+      ..write(obj.sodiumMg)
+      ..writeByte(14)
+      ..write(obj.glycemicImpact)
+      ..writeByte(15)
+      ..write(obj.conditionNotes)
+      ..writeByte(16)
+      ..write(obj.imageQuery);
   }
 
   @override
@@ -416,6 +487,94 @@ class MealSlotAdapter extends TypeAdapter<MealSlot> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is MealSlotAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class GlycemicImpactAdapter extends TypeAdapter<GlycemicImpact> {
+  @override
+  final int typeId = 27;
+
+  @override
+  GlycemicImpact read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return GlycemicImpact.low;
+      case 1:
+        return GlycemicImpact.medium;
+      case 2:
+        return GlycemicImpact.high;
+      default:
+        return GlycemicImpact.low;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, GlycemicImpact obj) {
+    switch (obj) {
+      case GlycemicImpact.low:
+        writer.writeByte(0);
+        break;
+      case GlycemicImpact.medium:
+        writer.writeByte(1);
+        break;
+      case GlycemicImpact.high:
+        writer.writeByte(2);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GlycemicImpactAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class ConditionFlagAdapter extends TypeAdapter<ConditionFlag> {
+  @override
+  final int typeId = 28;
+
+  @override
+  ConditionFlag read(BinaryReader reader) {
+    switch (reader.readByte()) {
+      case 0:
+        return ConditionFlag.favorable;
+      case 1:
+        return ConditionFlag.neutral;
+      case 2:
+        return ConditionFlag.useCaution;
+      default:
+        return ConditionFlag.favorable;
+    }
+  }
+
+  @override
+  void write(BinaryWriter writer, ConditionFlag obj) {
+    switch (obj) {
+      case ConditionFlag.favorable:
+        writer.writeByte(0);
+        break;
+      case ConditionFlag.neutral:
+        writer.writeByte(1);
+        break;
+      case ConditionFlag.useCaution:
+        writer.writeByte(2);
+        break;
+    }
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ConditionFlagAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

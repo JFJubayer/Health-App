@@ -34,6 +34,18 @@ class MealModel {
   final List<String>? tags;
   bool isConsumed;
 
+  // New fields for bd_food_db integration
+  final double? sodiumMg;
+  final String? glycemicImpact; // 'low' | 'medium' | 'high'
+  final String? diabetesFlag; // 'favorable' | 'neutral' | 'useCaution'
+  final String? diabetesNote;
+  final String? hypertensionFlag;
+  final String? hypertensionNote;
+  final String? pcosFlag;
+  final String? pcosNote;
+  final String? imageQuery;
+  final String? category; // 'riceBased', 'bhorta', etc.
+
   MealModel({
     required this.id,
     required this.name,
@@ -50,6 +62,16 @@ class MealModel {
     this.tags = const [],
     this.prepTimeMinutes = 15,
     this.isConsumed = false,
+    this.sodiumMg,
+    this.glycemicImpact,
+    this.diabetesFlag,
+    this.diabetesNote,
+    this.hypertensionFlag,
+    this.hypertensionNote,
+    this.pcosFlag,
+    this.pcosNote,
+    this.imageQuery,
+    this.category,
   });
 
   Map<String, dynamic> toMap() {
@@ -69,6 +91,16 @@ class MealModel {
       'tags': tags,
       'prepTimeMinutes': prepTimeMinutes,
       'isConsumed': isConsumed,
+      'sodiumMg': sodiumMg,
+      'glycemicImpact': glycemicImpact,
+      'diabetesFlag': diabetesFlag,
+      'diabetesNote': diabetesNote,
+      'hypertensionFlag': hypertensionFlag,
+      'hypertensionNote': hypertensionNote,
+      'pcosFlag': pcosFlag,
+      'pcosNote': pcosNote,
+      'imageQuery': imageQuery,
+      'category': category,
     };
   }
 
@@ -89,6 +121,16 @@ class MealModel {
       tags: List<String>.from(map['tags'] ?? []),
       prepTimeMinutes: map['prepTimeMinutes']?.toInt() ?? 15,
       isConsumed: map['isConsumed'] ?? false,
+      sodiumMg: map['sodiumMg']?.toDouble(),
+      glycemicImpact: map['glycemicImpact'],
+      diabetesFlag: map['diabetesFlag'],
+      diabetesNote: map['diabetesNote'],
+      hypertensionFlag: map['hypertensionFlag'],
+      hypertensionNote: map['hypertensionNote'],
+      pcosFlag: map['pcosFlag'],
+      pcosNote: map['pcosNote'],
+      imageQuery: map['imageQuery'],
+      category: map['category'],
     );
   }
 }

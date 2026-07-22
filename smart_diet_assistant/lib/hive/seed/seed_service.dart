@@ -9,7 +9,7 @@ import '../../bd_food_db/data/food_database.dart' as bd_db;
 import '../../bd_food_db/data/ingredient_prices.dart' as bd_prices;
 
 class SeedService {
-  static const int _currentSeedVersion = 2;
+  static const int _currentSeedVersion = 3;
 
   static Future<void> seedIfNeeded() async {
     final seededVersion = PersistenceService.getSeedVersion();
@@ -696,7 +696,9 @@ class SeedService {
         )).toList(),
         tags: ['bd_food', ...food.tags],
         prepTimeMinutes: 15,
-        instructions: 'Dynamic portion: ${food.portionDescription}',
+        instructions: food.prepSteps.isNotEmpty
+            ? food.prepSteps.join('\n')
+            : 'Dynamic portion: ${food.portionDescription}',
       ));
     }
 

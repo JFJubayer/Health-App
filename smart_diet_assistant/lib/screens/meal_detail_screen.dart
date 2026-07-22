@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../models/meal_model.dart';
 import '../providers/user_provider.dart';
 import '../widgets/meal_picker_sheet.dart';
@@ -47,6 +48,8 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                   _buildNutritionalInfo(context, resolvedMeal),
                   const SizedBox(height: 32),
                   _buildIngredientList(context, resolvedMeal),
+                  const SizedBox(height: 32),
+                  _buildConditionAdvisories(context, resolvedMeal),
                   const SizedBox(height: 32),
                   _buildInstructions(context, resolvedMeal),
                   const SizedBox(height: 140),
@@ -256,6 +259,23 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                       width: double.infinity,
                       height: double.infinity,
                     )
+            else if (meal.category != null && _getCategoryIconPath(meal.category).isNotEmpty)
+              Container(
+                color: color.withValues(alpha: 0.08),
+                alignment: Alignment.center,
+                child: Opacity(
+                  opacity: 0.35,
+                  child: SvgPicture.asset(
+                    _getCategoryIconPath(meal.category),
+                    width: 140,
+                    height: 140,
+                    colorFilter: ColorFilter.mode(
+                      color,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              )
             else
               Container(
                 decoration: BoxDecoration(
@@ -343,12 +363,42 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
   }
 
   Widget _buildNutritionalInfo(BuildContext context, MealModel meal) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
       children: [
-        _buildMacroItem('Protein', meal.protein, 'g', Colors.orange),
-        _buildMacroItem('Carbs', meal.carbs, 'g', Colors.blue),
-        _buildMacroItem('Fat', meal.fat, 'g', Colors.purple),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildMacroItem('Protein', meal.protein, 'g', Colors.orange),
+            _buildMacroItem('Carbs', meal.carbs, 'g', Colors.blue),
+            _buildMacroItem('Fat', meal.fat, 'g', Colors.purple),
+          ],
+        ),
+        if (meal.sodiumMg != null || meal.glycemicImpact != null) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              if (meal.sodiumMg != null)
+                _buildExtraNutrientItem(
+                  context,
+                  Icons.info_outline,
+                  'Sodium',
+                  '${meal.sodiumMg!.toStringAsFixed(0)} mg',
+                  Colors.blueGrey,
+                ),
+              if (meal.glycemicImpact != null)
+                _buildExtraNutrientItem(
+                  context,
+                  Icons.speed_rounded,
+                  'Glycemic Impact',
+                  meal.glycemicImpact!.toUpperCase(),
+                  _getGlycemicColor(meal.glycemicImpact!),
+                ),
+            ],
+          ),
+        ],
       ],
     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1);
   }
@@ -512,6 +562,266 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
         return Colors.indigo;
       case MealType.snack:
         return Colors.teal;
+    }
+  }
+
+  String _getCategoryIconPath(String? categoryStr) {
+    if (categoryStr == null) return '';
+    const String iconBase = 'assets/icons';
+    switch (categoryStr) {
+      case 'riceBased':
+        return '$iconBase/rice_based.svg';
+      case 'bhorta':
+        return '$iconBase/bhorta.svg';
+      case 'dal':
+        return '$iconBase/dal.svg';
+      case 'fishCurry':
+        return '$iconBase/fish_curry.svg';
+      case 'meatCurry':
+        return '$iconBase/meat_curry.svg';
+      case 'eggDish':
+        return '$iconBase/egg_dish.svg';
+      case 'vegetableCurry':
+        return '$iconBase/vegetable_curry.svg';
+      case 'shak':
+        return '$iconBase/shak.svg';
+      case 'snack':
+        return '$iconBase/snack.svg';
+      case 'breakfast':
+        return '$iconBase/breakfast.svg';
+      case 'sweet':
+        return '$iconBase/sweet.svg';
+      case 'soupStew':
+        return '$iconBase/soup_stew.svg';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildExtraNutrientItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getGlycemicColor(String impact) {
+    switch (impact.toLowerCase()) {
+      case 'low':
+        return Colors.green;
+      case 'medium':
+        return Colors.orange;
+      case 'high':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Widget _buildConditionAdvisories(BuildContext context, MealModel meal) {
+    if (meal.diabetesFlag == null &&
+        meal.hypertensionFlag == null &&
+        meal.pcosFlag == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Health Condition Planning Guide',
+          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'ℹ️ Information derived from recipe ingredients. This is a planning aid and not formal medical advice.',
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildConditionCard(
+          context,
+          'Diabetes',
+          meal.diabetesFlag,
+          meal.diabetesNote,
+          Icons.biotech_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildConditionCard(
+          context,
+          'Hypertension',
+          meal.hypertensionFlag,
+          meal.hypertensionNote,
+          Icons.favorite_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildConditionCard(
+          context,
+          'PCOS',
+          meal.pcosFlag,
+          meal.pcosNote,
+          Icons.spa_rounded,
+        ),
+      ],
+    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1);
+  }
+
+  Widget _buildConditionCard(
+    BuildContext context,
+    String condition,
+    String? flag,
+    String? note,
+    IconData icon,
+  ) {
+    if (flag == null) return const SizedBox.shrink();
+
+    final color = _getConditionFlagColor(flag);
+    final label = _getConditionFlagLabel(flag);
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      condition,
+                      style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        label,
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (note != null && note.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    note,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getConditionFlagColor(String flag) {
+    switch (flag.toLowerCase()) {
+      case 'favorable':
+        return Colors.green;
+      case 'neutral':
+        return Colors.grey;
+      case 'usecaution':
+      case 'use_caution':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _getConditionFlagLabel(String flag) {
+    switch (flag.toLowerCase()) {
+      case 'favorable':
+        return 'FAVORABLE';
+      case 'neutral':
+        return 'NEUTRAL';
+      case 'usecaution':
+      case 'use_caution':
+        return 'USE CAUTION';
+      default:
+        return flag.toUpperCase();
     }
   }
 }
