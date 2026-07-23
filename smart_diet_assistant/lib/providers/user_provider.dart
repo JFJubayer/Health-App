@@ -783,13 +783,13 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  Future<List<MealModel>> getMealAlternativesFor(String mealId) async {
+  Future<List<MealModel>> getMealAlternativesFor(String mealId, {MealType? mealType}) async {
     final currentMeal = resolveMealById(mealId);
-    if (currentMeal == null) return [];
+    final targetType = currentMeal?.type ?? mealType ?? MealType.lunch;
 
     final templates = await DietService.getMealAlternatives(
-      currentMeal.type,
-      _targetCaloriesForMealType(currentMeal.type),
+      targetType,
+      _targetCaloriesForMealType(targetType),
       _user?.conditions ?? [],
       mealId,
     );

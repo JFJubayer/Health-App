@@ -21,6 +21,7 @@ class MealSelectorService {
     required MacroTargets macros,
     required List<String> conditions, 
     required MealType type,
+    int? limit = 3,
   }) {
     final prefs = PersistenceService.getPreferences(MealMemoryService.localUserId);
     final avoidedMealIds = prefs?.avoidedMealIds ?? [];
@@ -42,7 +43,7 @@ class MealSelectorService {
       
       // Sort by least used
       validMeals.sort((a, b) => a.timesUsed.compareTo(b.timesUsed));
-      return validMeals.take(3).toList();
+      return limit != null ? validMeals.take(limit).toList() : validMeals;
     }
 
     validMeals.sort((a, b) {
@@ -57,11 +58,12 @@ class MealSelectorService {
        validMeals.sort((a, b) => a.timesUsed.compareTo(b.timesUsed));
     }
 
-    return validMeals.take(3).toList();
+    return limit != null ? validMeals.take(limit).toList() : validMeals;
   }
 
   bool _isSafeForConditions(MealTemplateEntity meal, List<String> userConditions) {
     if (userConditions.isEmpty) return true;
+    if (meal.conditions.isEmpty) return true;
     for (var cond in userConditions) {
       if (!meal.conditions.any((c) => c.toLowerCase() == cond.toLowerCase())) {
         return false;

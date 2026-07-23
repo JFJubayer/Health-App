@@ -270,6 +270,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
     showMealPickerSheet(
       context,
       currentMealId,
+      mealType: type,
       popRouteOnSelect: false,
       onMealSelected: (newMealId) async {
          final provider = Provider.of<UserProvider>(context, listen: false);
@@ -346,7 +347,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
                 children: [
                   const Icon(Icons.auto_awesome, color: Colors.green),
                   const SizedBox(width: 8),
-                  Text('BD Budget Planner', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                  Text('Budget Planner', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
                 ],
               ),
               content: SingleChildScrollView(
@@ -446,7 +447,7 @@ class _WeeklyPlanScreenState extends State<WeeklyPlanScreen> {
             children: [
               const Icon(Icons.info_outline, color: Colors.green),
               const SizedBox(width: 8),
-              Text('Plan Optimization Report', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              Text('Plan Optimization', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
             ],
           ),
           content: SizedBox(

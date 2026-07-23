@@ -196,12 +196,16 @@ class DietService {
     }
 
     // Check if this is a Bangladeshi food item database entry
-    final bdFood = PersistenceService.getBdFoodItem(template.id);
+    final baseFoodId = template.id.split('_').first;
+    final bdFood = PersistenceService.getBdFoodItem(template.id) ??
+        PersistenceService.getBdFoodItem(baseFoodId) ??
+        bd_db.foodDatabaseById[template.id] ??
+        bd_db.foodDatabaseById[baseFoodId];
     if (bdFood != null) {
       final prices = PersistenceService.getBdIngredientPricesMap();
       final cost = bdFood.costBDT(prices);
       return MealModel(
-        id: bdFood.id,
+        id: template.id,
         name: '${bdFood.nameEn} (${bdFood.nameBn})',
         type: template.type,
         calories: bdFood.nutrition.calories.toInt(),
@@ -302,8 +306,9 @@ class DietService {
       macros: macros,
       conditions: conditions,
       type: type,
+      limit: null,
     );
-    return options.where((m) => m.id != currentMealId).take(3).toList();
+    return options.where((m) => m.id != currentMealId).toList();
   }
 
   static Future<MealTemplateEntity> getAlternativeMeal(

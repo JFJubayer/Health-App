@@ -9,7 +9,7 @@ import '../../bd_food_db/data/food_database.dart' as bd_db;
 import '../../bd_food_db/data/ingredient_prices.dart' as bd_prices;
 
 class SeedService {
-  static const int _currentSeedVersion = 3;
+  static const int _currentSeedVersion = 4;
 
   static Future<void> seedIfNeeded() async {
     final seededVersion = PersistenceService.getSeedVersion();
@@ -658,48 +658,53 @@ class SeedService {
     // 3. Create corresponding MealTemplateEntity items in standard templates box
     final List<MealTemplateEntity> templates = [];
     for (final food in foods) {
-      MealType type;
-      switch (food.category) {
-        case bd.FoodCategory.breakfast:
-          type = MealType.breakfast;
-          break;
-        case bd.FoodCategory.riceBased:
-        case bd.FoodCategory.bhorta:
-        case bd.FoodCategory.dal:
-        case bd.FoodCategory.fishCurry:
-        case bd.FoodCategory.meatCurry:
-        case bd.FoodCategory.eggDish:
-        case bd.FoodCategory.vegetableCurry:
-        case bd.FoodCategory.shak:
-        case bd.FoodCategory.soupStew:
-          if (food.suitableSlots.contains(bd.MealSlot.lunch)) {
-            type = MealType.lunch;
-          } else if (food.suitableSlots.contains(bd.MealSlot.dinner)) {
-            type = MealType.dinner;
-          } else {
-            type = MealType.lunch;
-          }
-          break;
-        case bd.FoodCategory.snack:
-        case bd.FoodCategory.sweet:
-          type = MealType.snack;
-          break;
+      final List<String> conditions = [];
+      if (food.conditionNotes.diabetes != bd.ConditionFlag.useCaution) {
+        conditions.add('Diabetes');
+      }
+      if (food.conditionNotes.hypertension != bd.ConditionFlag.useCaution) {
+        conditions.add('Hypertension');
+      }
+      if (food.conditionNotes.pcos != bd.ConditionFlag.useCaution) {
+        conditions.add('PCOS');
       }
 
-      templates.add(MealTemplateEntity(
-        id: food.id,
-        name: food.nameEn,
-        type: type,
-        ingredients: food.ingredients.map((iq) => IngredientPortion(
-          ingredientId: iq.ingredientId,
-          grams: iq.grams,
-        )).toList(),
-        tags: ['bd_food', ...food.tags],
-        prepTimeMinutes: 15,
-        instructions: food.prepSteps.isNotEmpty
-            ? food.prepSteps.join('\n')
-            : 'Dynamic portion: ${food.portionDescription}',
-      ));
+      final List<MealType> targetTypes = [];
+      if (food.category == bd.FoodCategory.breakfast || food.suitableSlots.contains(bd.MealSlot.breakfast)) {
+        targetTypes.add(MealType.breakfast);
+      }
+      if (food.suitableSlots.contains(bd.MealSlot.lunch)) {
+        targetTypes.add(MealType.lunch);
+      }
+      if (food.suitableSlots.contains(bd.MealSlot.dinner)) {
+        targetTypes.add(MealType.dinner);
+      }
+      if (food.category == bd.FoodCategory.snack || food.category == bd.FoodCategory.sweet || food.suitableSlots.contains(bd.MealSlot.snackTime)) {
+        targetTypes.add(MealType.snack);
+      }
+      if (targetTypes.isEmpty) {
+        targetTypes.add(MealType.lunch);
+      }
+
+      for (int i = 0; i < targetTypes.length; i++) {
+        final tType = targetTypes[i];
+        final templateId = i == 0 ? food.id : '${food.id}_${tType.name}';
+        templates.add(MealTemplateEntity(
+          id: templateId,
+          name: food.nameEn,
+          type: tType,
+          ingredients: food.ingredients.map((iq) => IngredientPortion(
+            ingredientId: iq.ingredientId,
+            grams: iq.grams,
+          )).toList(),
+          tags: ['bd_food', ...food.tags],
+          conditions: conditions,
+          prepTimeMinutes: 15,
+          instructions: food.prepSteps.isNotEmpty
+              ? food.prepSteps.join('\n')
+              : 'Dynamic portion: ${food.portionDescription}',
+        ));
+      }
     }
 
     // Save empty mock ingredients so the app doesn't crash on standard names lookup

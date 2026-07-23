@@ -237,6 +237,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             onPressed: () => showMealPickerSheet(
               context,
               meal.id,
+              mealType: meal.type,
               popRouteOnSelect: true,
             ),
           ),
