@@ -28,6 +28,12 @@ class DayPlanEntityAdapter extends TypeAdapter<DayPlanEntity> {
       lunchLocked: fields[9] == null ? false : fields[9] as bool,
       dinnerLocked: fields[10] == null ? false : fields[10] as bool,
       lastModified: fields[11] as DateTime?,
+      breakfastExtraIds:
+          fields[12] == null ? [] : (fields[12] as List).cast<String>(),
+      lunchExtraIds:
+          fields[13] == null ? [] : (fields[13] as List).cast<String>(),
+      dinnerExtraIds:
+          fields[14] == null ? [] : (fields[14] as List).cast<String>(),
       consumedSlots:
           fields[7] == null ? {} : (fields[7] as Map?)?.cast<String, bool>(),
     );
@@ -36,7 +42,7 @@ class DayPlanEntityAdapter extends TypeAdapter<DayPlanEntity> {
   @override
   void write(BinaryWriter writer, DayPlanEntity obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -60,7 +66,13 @@ class DayPlanEntityAdapter extends TypeAdapter<DayPlanEntity> {
       ..writeByte(10)
       ..write(obj.dinnerLocked)
       ..writeByte(11)
-      ..write(obj.lastModified);
+      ..write(obj.lastModified)
+      ..writeByte(12)
+      ..write(obj.breakfastExtraIds)
+      ..writeByte(13)
+      ..write(obj.lunchExtraIds)
+      ..writeByte(14)
+      ..write(obj.dinnerExtraIds);
   }
 
   @override

@@ -417,47 +417,6 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> with TickerProviderStat
       ),
     );
   }
-
-  Widget _buildTodayLogSummary(BuildContext context) {
-    final provider = Provider.of<UserProvider>(context);
-    final theme = Theme.of(context);
-    final logs = provider.workoutLogs;
-
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: logs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final log = logs[index];
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(log['icon'] ?? '🏋️', style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 4),
-                Text(
-                  '${log['calories']} kcal',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   // ──────────────────────────────────────────────
   // Workouts Tab
   // ──────────────────────────────────────────────

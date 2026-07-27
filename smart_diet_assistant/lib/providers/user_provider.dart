@@ -116,9 +116,9 @@ class UserProvider with ChangeNotifier {
 
   bool isMainPlanMeal(String mealId) {
     if (_currentDayPlan == null) return false;
-    return mealId == _currentDayPlan!.breakfastId ||
-        mealId == _currentDayPlan!.lunchId ||
-        mealId == _currentDayPlan!.dinnerId;
+    return _currentDayPlan!.allBreakfastIds.contains(mealId) ||
+        _currentDayPlan!.allLunchIds.contains(mealId) ||
+        _currentDayPlan!.allDinnerIds.contains(mealId);
   }
 
 
@@ -289,30 +289,54 @@ class UserProvider with ChangeNotifier {
     if (_currentDayPlan == null) return;
     
     _mealPlan.clear();
-    final allTemplates = PersistenceService.getAllTemplates();
-    final Map<String, MealTemplateEntity> templateMap = {
-      for (var t in allTemplates) t.id: t
-    };
 
-    void addMeal(String? id) {
-      if (id != null && templateMap.containsKey(id)) {
-        final meal = DietService.resolveMealModel(templateMap[id]!);
-        meal.isConsumed = _currentDayPlan!.consumedSlots[id] ?? false;
-        _mealPlan.add(meal);
+    void addMeal(String? id, MealType slotType) {
+      if (id != null) {
+        final meal = resolveMealById(id);
+        if (meal != null) {
+          final adjustedMeal = MealModel(
+            id: meal.id,
+            name: meal.name,
+            calories: meal.calories,
+            type: slotType,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            ingredients: meal.ingredients,
+            instructions: meal.instructions,
+            recipeSteps: meal.recipeSteps,
+            components: meal.components,
+            imageUrl: meal.imageUrl,
+            tags: meal.tags,
+            prepTimeMinutes: meal.prepTimeMinutes,
+            isConsumed: _currentDayPlan!.consumedSlots[id] ?? false,
+            sodiumMg: meal.sodiumMg,
+            glycemicImpact: meal.glycemicImpact,
+            diabetesFlag: meal.diabetesFlag,
+            diabetesNote: meal.diabetesNote,
+            hypertensionFlag: meal.hypertensionFlag,
+            hypertensionNote: meal.hypertensionNote,
+            pcosFlag: meal.pcosFlag,
+            pcosNote: meal.pcosNote,
+            imageQuery: meal.imageQuery,
+            category: meal.category,
+          );
+          _mealPlan.add(adjustedMeal);
+        }
       }
     }
 
-    addMeal(_currentDayPlan!.breakfastId);
-    addMeal(_currentDayPlan!.lunchId);
-    addMeal(_currentDayPlan!.dinnerId);
-
-    final customById = {for (var m in _customMealsCache) m.id: m};
+    for (final bId in _currentDayPlan!.allBreakfastIds) {
+      addMeal(bId, MealType.breakfast);
+    }
+    for (final lId in _currentDayPlan!.allLunchIds) {
+      addMeal(lId, MealType.lunch);
+    }
+    for (final dId in _currentDayPlan!.allDinnerIds) {
+      addMeal(dId, MealType.dinner);
+    }
     for (final snackId in _currentDayPlan!.snackIds) {
-      final custom = customById[snackId];
-      if (custom != null) {
-        custom.isConsumed = _currentDayPlan!.consumedSlots[snackId] ?? false;
-        _mealPlan.add(custom);
-      }
+      addMeal(snackId, MealType.snack);
     }
 
     notifyListeners();
@@ -333,11 +357,11 @@ class UserProvider with ChangeNotifier {
   List<String> _recentMealIdsFromDayPlan() {
     if (_currentDayPlan == null) return [];
     return [
-      _currentDayPlan!.breakfastId,
-      _currentDayPlan!.lunchId,
-      _currentDayPlan!.dinnerId,
+      ..._currentDayPlan!.allBreakfastIds,
+      ..._currentDayPlan!.allLunchIds,
+      ..._currentDayPlan!.allDinnerIds,
       ..._currentDayPlan!.snackIds,
-    ].whereType<String>().toList();
+    ];
   }
 
   double _targetCaloriesForMealType(MealType type) {
@@ -857,13 +881,67 @@ class UserProvider with ChangeNotifier {
     return true;
   }
 
-  void addCustomMeal(MealModel meal) async {
+  void addMealToPlan(MealModel meal, MealType targetType) async {
     if (_currentDayPlan == null) return;
 
+    final updatedMeal = MealModel(
+      id: meal.id,
+      name: meal.name,
+      calories: meal.calories,
+      type: targetType,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      ingredients: meal.ingredients,
+      instructions: meal.instructions,
+      recipeSteps: meal.recipeSteps,
+      components: meal.components,
+      imageUrl: meal.imageUrl,
+      tags: meal.tags,
+      prepTimeMinutes: meal.prepTimeMinutes,
+      isConsumed: meal.isConsumed,
+      sodiumMg: meal.sodiumMg,
+      glycemicImpact: meal.glycemicImpact,
+      diabetesFlag: meal.diabetesFlag,
+      diabetesNote: meal.diabetesNote,
+      hypertensionFlag: meal.hypertensionFlag,
+      hypertensionNote: meal.hypertensionNote,
+      pcosFlag: meal.pcosFlag,
+      pcosNote: meal.pcosNote,
+      imageQuery: meal.imageQuery,
+      category: meal.category,
+    );
+
     _customMealsCache.removeWhere((m) => m.id == meal.id);
-    _customMealsCache.add(meal);
-    if (!_currentDayPlan!.snackIds.contains(meal.id)) {
-      _currentDayPlan!.snackIds.add(meal.id);
+    _customMealsCache.add(updatedMeal);
+
+    switch (targetType) {
+      case MealType.breakfast:
+        if (_currentDayPlan!.breakfastId == null) {
+          _currentDayPlan!.breakfastId = meal.id;
+        } else if (!_currentDayPlan!.allBreakfastIds.contains(meal.id)) {
+          _currentDayPlan!.breakfastExtraIds.add(meal.id);
+        }
+        break;
+      case MealType.lunch:
+        if (_currentDayPlan!.lunchId == null) {
+          _currentDayPlan!.lunchId = meal.id;
+        } else if (!_currentDayPlan!.allLunchIds.contains(meal.id)) {
+          _currentDayPlan!.lunchExtraIds.add(meal.id);
+        }
+        break;
+      case MealType.dinner:
+        if (_currentDayPlan!.dinnerId == null) {
+          _currentDayPlan!.dinnerId = meal.id;
+        } else if (!_currentDayPlan!.allDinnerIds.contains(meal.id)) {
+          _currentDayPlan!.dinnerExtraIds.add(meal.id);
+        }
+        break;
+      case MealType.snack:
+        if (!_currentDayPlan!.snackIds.contains(meal.id)) {
+          _currentDayPlan!.snackIds.add(meal.id);
+        }
+        break;
     }
 
     await PersistenceService.saveDayPlan(_currentDayPlan!);
@@ -871,20 +949,48 @@ class UserProvider with ChangeNotifier {
     _buildMealPlanFromDayPlan();
   }
 
+  void addCustomMeal(MealModel meal) async {
+    addMealToPlan(meal, meal.type);
+  }
+
   void deleteMeal(String mealId) async {
     if (_currentDayPlan == null) return;
 
     if (_currentDayPlan!.snackIds.contains(mealId)) {
       _currentDayPlan!.snackIds.remove(mealId);
-      _customMealsCache.removeWhere((m) => m.id == mealId);
-    } else if (_currentDayPlan!.breakfastId == mealId) {
-      _currentDayPlan!.breakfastId = null;
-    } else if (_currentDayPlan!.lunchId == mealId) {
-      _currentDayPlan!.lunchId = null;
-    } else if (_currentDayPlan!.dinnerId == mealId) {
-      _currentDayPlan!.dinnerId = null;
     }
 
+    if (_currentDayPlan!.breakfastExtraIds.contains(mealId)) {
+      _currentDayPlan!.breakfastExtraIds.remove(mealId);
+    } else if (_currentDayPlan!.breakfastId == mealId) {
+      if (_currentDayPlan!.breakfastExtraIds.isNotEmpty) {
+        _currentDayPlan!.breakfastId = _currentDayPlan!.breakfastExtraIds.removeAt(0);
+      } else {
+        _currentDayPlan!.breakfastId = null;
+      }
+    }
+
+    if (_currentDayPlan!.lunchExtraIds.contains(mealId)) {
+      _currentDayPlan!.lunchExtraIds.remove(mealId);
+    } else if (_currentDayPlan!.lunchId == mealId) {
+      if (_currentDayPlan!.lunchExtraIds.isNotEmpty) {
+        _currentDayPlan!.lunchId = _currentDayPlan!.lunchExtraIds.removeAt(0);
+      } else {
+        _currentDayPlan!.lunchId = null;
+      }
+    }
+
+    if (_currentDayPlan!.dinnerExtraIds.contains(mealId)) {
+      _currentDayPlan!.dinnerExtraIds.remove(mealId);
+    } else if (_currentDayPlan!.dinnerId == mealId) {
+      if (_currentDayPlan!.dinnerExtraIds.isNotEmpty) {
+        _currentDayPlan!.dinnerId = _currentDayPlan!.dinnerExtraIds.removeAt(0);
+      } else {
+        _currentDayPlan!.dinnerId = null;
+      }
+    }
+
+    _customMealsCache.removeWhere((m) => m.id == mealId);
     _currentDayPlan!.consumedSlots.remove(mealId);
 
     await PersistenceService.saveDayPlan(_currentDayPlan!);

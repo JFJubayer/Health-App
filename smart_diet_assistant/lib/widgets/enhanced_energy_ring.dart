@@ -39,12 +39,6 @@ class EnhancedEnergyRing extends StatelessWidget {
       fatConsumed: fatConsumed,
       fatTarget: fatTarget,
     );
-    final projected = MacroCalculator.getProjectedIntake(
-      consumed: consumed,
-      target: target,
-      mealsPerDay: 3,
-      mealsConsumed: mealsConsumed.toDouble(),
-    );
 
     return Container(
       padding: const EdgeInsets.all(24),

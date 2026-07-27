@@ -149,7 +149,7 @@ class DashboardScreen extends StatelessWidget {
 
             // const SizedBox(height: 16),
             const Divider(height: 32),
-            const SizedBox(height: 8),
+            // const SizedBox(height: 8),
 
             // Supplementary Utilities (Water & Fasting) gracefully nested below
             Text(

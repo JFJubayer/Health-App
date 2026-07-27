@@ -96,6 +96,7 @@ class _MealPickerSheetContentState extends State<_MealPickerSheetContent> {
     final provider = Provider.of<UserProvider>(context, listen: false);
 
     final filteredMeals = widget.alternatives.where((meal) {
+      if (meal.calories <= 0) return false;
       if (_searchQuery.isEmpty) return true;
       final nameLower = meal.name.toLowerCase();
       final tagLower = (meal.tags ?? []).join(' ').toLowerCase();

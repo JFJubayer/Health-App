@@ -15,7 +15,7 @@ Future<double?> showMealRatingSheet(BuildContext context, MealModel meal) {
 class _MealRatingSheet extends StatefulWidget {
   final MealModel meal;
 
-  const _MealRatingSheet({super.key, required this.meal});
+  const _MealRatingSheet({required this.meal});
 
   @override
   State<_MealRatingSheet> createState() => _MealRatingSheetState();

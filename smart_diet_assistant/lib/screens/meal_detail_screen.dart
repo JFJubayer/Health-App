@@ -7,11 +7,17 @@ import '../models/meal_model.dart';
 import '../providers/user_provider.dart';
 import '../widgets/meal_picker_sheet.dart';
 import '../widgets/meal_rating_sheet.dart';
+import '../widgets/meal_slot_picker_sheet.dart';
 
 class MealDetailScreen extends StatefulWidget {
   final MealModel meal;
+  final List<MealType>? availableTypes;
 
-  const MealDetailScreen({super.key, required this.meal});
+  const MealDetailScreen({
+    super.key,
+    required this.meal,
+    this.availableTypes,
+  });
 
   @override
   State<MealDetailScreen> createState() => _MealDetailScreenState();
@@ -65,6 +71,25 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
 
     return Scaffold(
       backgroundColor: scaffoldBg,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showMealSlotPickerSheet(
+            context: context,
+            meal: resolvedMeal,
+            availableTypes: widget.availableTypes,
+          );
+        },
+        backgroundColor: primaryOrange,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: Text(
+          'Add to Daily Plan',
+          style: GoogleFonts.outfit(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           // Scrollable Content
@@ -179,7 +204,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                               ),
                             ),
                           ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 80), // Increased bottom space for FAB
                       ],
                     ),
                   ),

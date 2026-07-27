@@ -196,7 +196,7 @@ class DietService {
     }
 
     // Check if this is a Bangladeshi food item database entry
-    final baseFoodId = template.id.split('_').first;
+    final baseFoodId = template.id.replaceAll(RegExp(r'_(breakfast|lunch|dinner|snack)$'), '');
     final bdFood = PersistenceService.getBdFoodItem(template.id) ??
         PersistenceService.getBdFoodItem(baseFoodId) ??
         bd_db.foodDatabaseById[template.id] ??
