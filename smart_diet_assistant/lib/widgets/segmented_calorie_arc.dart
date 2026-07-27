@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../providers/user_provider.dart';
 
 class SegmentedCalorieArc extends StatelessWidget {
   final double consumed;

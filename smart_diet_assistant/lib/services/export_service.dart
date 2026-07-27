@@ -3,15 +3,12 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/user_model.dart';
 import '../models/meal_model.dart';
-import 'persistence_service.dart';
+
 
 class ExportService {
   static const _blue900 = PdfColors.blue900;
   static const _grey700 = PdfColors.grey700;
   static const _grey300 = PdfColors.grey300;
-  static const _red800 = PdfColors.red800;
-  static const _green800 = PdfColors.green800;
-  static const _tealAccent = PdfColors.teal;
 
   static Future<void> exportToPdf(
     UserModel user,
@@ -23,12 +20,8 @@ class ExportService {
   }) async {
     final pdf = pw.Document();
 
-    final readings = await PersistenceService.getSugarReadings();
     final now = DateTime.now();
-    final String dateStr = now.toIso8601String().substring(0, 10);
     final String displayDate = '${now.day}/${now.month}/${now.year}';
-
-    final bool isDiabetic = user.conditions.contains('Diabetes');
 
     // ---- Aggregate nutrition ----
     final totalCalories = meals.fold<int>(0, (sum, m) => sum + m.calories);
@@ -40,42 +33,6 @@ class ExportService {
     final heightM = user.heightCm / 100;
     final bmi = heightM > 0 ? user.weightKg / (heightM * heightM) : 0.0;
     final bmiCategory = _bmiCategory(bmi);
-
-    // ---- Glucose readings matched to today's meals ----
-    final glucoseRows = <List<dynamic>>[];
-    final preValues = <double>[];
-    final postValues = <double>[];
-    int preSpikes = 0;
-    int postSpikes = 0;
-
-    if (isDiabetic) {
-      for (final meal in meals) {
-        final key = '${meal.id}_$dateStr';
-        final reading = readings[key];
-        if (reading == null) continue;
-        if (reading.preMeal == null && reading.postMeal == null) continue;
-
-        if (reading.preMeal != null) {
-          preValues.add(reading.preMeal!);
-          if (reading.isPreMealSpike) preSpikes++;
-        }
-        if (reading.postMeal != null) {
-          postValues.add(reading.postMeal!);
-          if (reading.isPostMealSpike) postSpikes++;
-        }
-
-        glucoseRows.add([
-          meal.type.name[0].toUpperCase() + meal.type.name.substring(1),
-          meal.name,
-          reading.preMeal != null ? '${reading.preMeal!.toInt()} mg/dL' : '-',
-          reading.postMeal != null ? '${reading.postMeal!.toInt()} mg/dL' : '-',
-          (reading.isPreMealSpike || reading.isPostMealSpike) ? 'Spike' : 'Normal',
-        ]);
-      }
-    }
-
-    final avgPre = preValues.isEmpty ? null : preValues.reduce((a, b) => a + b) / preValues.length;
-    final avgPost = postValues.isEmpty ? null : postValues.reduce((a, b) => a + b) / postValues.length;
 
     pdf.addPage(
       pw.MultiPage(
@@ -186,40 +143,7 @@ class ExportService {
 
           pw.SizedBox(height: 20),
 
-          // ---- Blood Glucose Monitoring (diabetic patients only) ----
-          if (isDiabetic) ...[
-            _sectionHeader('Blood Glucose Monitoring'),
-            if (glucoseRows.isEmpty)
-              pw.Text('No glucose readings logged for today.', style: pw.TextStyle(fontSize: 10, color: _grey700))
-            else ...[
-              pw.Row(
-                children: [
-                  _statChip('Avg Pre-Meal', avgPre != null ? '${avgPre.toStringAsFixed(0)} mg/dL' : '-', _blue900),
-                  pw.SizedBox(width: 8),
-                  _statChip('Avg Post-Meal', avgPost != null ? '${avgPost.toStringAsFixed(0)} mg/dL' : '-', _blue900),
-                  pw.SizedBox(width: 8),
-                  _statChip('Spikes Flagged', '${preSpikes + postSpikes}', preSpikes + postSpikes > 0 ? _red800 : _green800),
-                ],
-              ),
-              pw.SizedBox(height: 10),
-              pw.Table.fromTextArray(
-                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white, fontSize: 10),
-                headerDecoration: const pw.BoxDecoration(color: _tealAccent),
-                cellStyle: const pw.TextStyle(fontSize: 10),
-                cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                border: pw.TableBorder.all(color: _grey300, width: 0.5),
-                headers: ['Meal', 'Name', 'Pre-Meal', 'Post-Meal', 'Status'],
-                data: glucoseRows,
-                cellDecoration: (index, data, rowNum) {
-                  if (data[4] == 'Spike') {
-                    return const pw.BoxDecoration(color: PdfColors.red50);
-                  }
-                  return const pw.BoxDecoration();
-                },
-              ),
-            ],
-            pw.SizedBox(height: 20),
-          ],
+
 
           // ---- Meal Breakdown ----
           _sectionHeader('Meal Breakdown'),
@@ -265,24 +189,6 @@ class ExportService {
         ),
       );
 
-  static pw.Widget _statChip(String label, String value, PdfColor color) => pw.Expanded(
-        child: pw.Container(
-          padding: const pw.EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-          decoration: pw.BoxDecoration(
-            color: PdfColor.fromInt(color.toInt()).shade(0.92),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-            border: pw.Border.all(color: color, width: 0.5),
-          ),
-          child: pw.Column(
-            children: [
-              pw.Text(value, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: color)),
-              pw.SizedBox(height: 2),
-              pw.Text(label, style: pw.TextStyle(fontSize: 8, color: _grey700)),
-            ],
-          ),
-        ),
-      );
-
   static List<dynamic> _nutritionRow(String label, double intake, double? target, String unit) {
     if (target == null || target <= 0) {
       return [label, '${intake.toStringAsFixed(0)} $unit', '-', '-'];
@@ -297,79 +203,5 @@ class ExportService {
     if (bmi < 25) return 'Normal';
     if (bmi < 30) return 'Overweight';
     return 'Obese';
-  }
-
-  static Future<void> exportWeeklyShoppingListPdf(List<String> ingredients) async {
-    final pdf = pw.Document();
-
-    final Map<String, List<String>> grouped = {
-      'Proteins': [],
-      'Grains & Carbs': [],
-      'Vegetables': [],
-      'Dairy & Others': [],
-    };
-
-    for (var item in ingredients) {
-      final lower = item.toLowerCase();
-      if (lower.contains('chicken') || lower.contains('beef') || lower.contains('fish') ||
-          lower.contains('egg') || lower.contains('prawn') || lower.contains('tofu') ||
-          lower.contains('lentil') || lower.contains('dal')) {
-        grouped['Proteins']!.add(item);
-      } else if (lower.contains('rice') || lower.contains('oat') || lower.contains('roti') ||
-          lower.contains('potato') || lower.contains('banana') || lower.contains('bread')) {
-        grouped['Grains & Carbs']!.add(item);
-      } else if (lower.contains('broccoli') || lower.contains('spinach') || lower.contains('cabbage') ||
-          lower.contains('tomato') || lower.contains('onion') || lower.contains('garlic') ||
-          lower.contains('pepper') || lower.contains('carrot') || lower.contains('vegetable')) {
-        grouped['Vegetables']!.add(item);
-      } else {
-        grouped['Dairy & Others']!.add(item);
-      }
-    }
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          pw.Header(
-            level: 0,
-            child: pw.Text(
-              'Weekly Shopping List',
-              style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: _blue900),
-            ),
-          ),
-          pw.SizedBox(height: 10),
-          pw.Text('${ingredients.length} total items', style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey600)),
-          pw.SizedBox(height: 20),
-          ...grouped.entries.where((e) => e.value.isNotEmpty).map((entry) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(entry.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16, color: _tealAccent)),
-                  pw.Divider(thickness: 0.5, color: _grey300),
-                  pw.SizedBox(height: 6),
-                  ...entry.value.map((item) => pw.Padding(
-                        padding: const pw.EdgeInsets.only(bottom: 4, left: 8),
-                        child: pw.Row(
-                          children: [
-                            pw.Container(width: 6, height: 6, decoration: const pw.BoxDecoration(shape: pw.BoxShape.circle, color: PdfColors.grey400)),
-                            pw.SizedBox(width: 8),
-                            pw.Text(item, style: const pw.TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      )),
-                  pw.SizedBox(height: 12),
-                ],
-              )),
-          pw.SizedBox(height: 20),
-          pw.Divider(thickness: 0.5),
-          pw.Align(
-            alignment: pw.Alignment.center,
-            child: pw.Text('Generated by Smart Diet Assistant', style: const pw.TextStyle(fontSize: 10, color: _grey700)),
-          ),
-        ],
-      ),
-    );
-
-    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 }

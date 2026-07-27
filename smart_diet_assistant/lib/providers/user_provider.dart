@@ -12,9 +12,7 @@ import '../models/gamification_model.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_template_entity.dart';
 import '../services/weekly_plan_service.dart';
-import '../models/shopping_item.dart';
 import '../models/macro_targets.dart';
-import '../models/sugar_reading.dart';
 import '../bd_food_db/models/food_models.dart';
 import '../bd_food_db/services/meal_plan_optimizer.dart';
 import '../hive/entities/ingredient_portion_entity.dart';
@@ -32,7 +30,6 @@ class UserProvider with ChangeNotifier {
   int _waterIntake = 0;
   int _waterGoal = 2500; // Default
   Set<String> _checkedIngredients = {};
-  List<ShoppingItem> _customShoppingItems = [];
   
   int _fastingDurationHours = 16;
   DateTime? _fastingStartTime;
@@ -43,7 +40,6 @@ class UserProvider with ChangeNotifier {
   List<MealModel> _customMealsCache = [];
   bool _hydrationRemindersEnabled = true;
   final MealFeedbackService _mealFeedback = MealFeedbackService();
-  Map<String, SugarReading> _sugarReadings = {};
   int _burnedCalories = 0;
   List<Map<String, dynamic>> _workoutLogs = [];
   int _workoutDailyTarget = 300;
@@ -101,8 +97,7 @@ class UserProvider with ChangeNotifier {
   bool get isFasting => _fastingStartTime != null;
   GamificationModel get gamification => _gamification;
   bool get hydrationRemindersEnabled => _hydrationRemindersEnabled;
-  List<ShoppingItem> get customShoppingItems => _customShoppingItems;
-  Map<String, SugarReading> get sugarReadings => _sugarReadings;
+
   int get burnedCalories => _burnedCalories;
   List<Map<String, dynamic>> get workoutLogs => _workoutLogs;
   int get workoutDailyTarget => _workoutDailyTarget;
@@ -116,32 +111,6 @@ class UserProvider with ChangeNotifier {
   bool get isActiveWorkoutRunning => _isActiveWorkoutRunning;
   bool get isActiveWorkoutComplete => _isActiveWorkoutComplete;
   int get activeWorkoutElapsedSeconds => _activeWorkoutElapsedSeconds;
-
-  SugarReading? getSugarReading(String mealId, String dateStr) {
-    return _sugarReadings['${mealId}_$dateStr'];
-  }
-
-  SugarReading? getSugarReadingForToday(String mealId) {
-    return getSugarReading(mealId, _todayDateStr);
-  }
-
-  Future<void> recordSugarReading(
-    String mealId, {
-    double? preMeal,
-    double? postMeal,
-    bool clearPre = false,
-    bool clearPost = false,
-  }) async {
-    final key = '${mealId}_$_todayDateStr';
-    final existing = _sugarReadings[key] ?? SugarReading();
-    _sugarReadings[key] = SugarReading(
-      preMeal: clearPre ? null : (preMeal ?? existing.preMeal),
-      postMeal: clearPost ? null : (postMeal ?? existing.postMeal),
-    );
-    await PersistenceService.saveSugarReadings(_sugarReadings);
-    notifyListeners();
-  }
-
   String get _todayDateStr =>
       DateTime.now().toIso8601String().substring(0, 10);
 
@@ -152,38 +121,6 @@ class UserProvider with ChangeNotifier {
         mealId == _currentDayPlan!.dinnerId;
   }
 
-  List<String> get shoppingList {
-    final ingredients = <String>{};
-    for (var meal in _mealPlan) {
-      ingredients.addAll(meal.ingredients);
-    }
-    return ingredients.toList();
-  }
-
-  Future<List<String>> getWeeklyShoppingList() async {
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekPlans = await getWeeklyPlans(weekStart);
-    final ingredients = <String>{};
-    
-    for (var plan in weekPlans) {
-      void addIng(String? id) {
-        if (id != null) {
-          final meal = resolveMealById(id);
-          if (meal != null) {
-            ingredients.addAll(meal.ingredients);
-          }
-        }
-      }
-      addIng(plan.breakfastId);
-      addIng(plan.lunchId);
-      addIng(plan.dinnerId);
-      for (var snackId in plan.snackIds) {
-        addIng(snackId);
-      }
-    }
-    return ingredients.toList();
-  }
 
   int get totalConsumedCalories => _mealPlan.where((m) => m.isConsumed).fold(0, (sum, m) => sum + m.calories);
   double get totalConsumedProtein => _mealPlan.where((m) => m.isConsumed).fold(0.0, (sum, m) => sum + m.protein);
@@ -342,17 +279,7 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void addCustomShoppingItem(ShoppingItem item) {
-    _customShoppingItems.add(item);
-    PersistenceService.saveCustomShoppingItems(_customShoppingItems);
-    notifyListeners();
-  }
 
-  void removeCustomShoppingItem(String id) {
-    _customShoppingItems.removeWhere((i) => i.id == id);
-    PersistenceService.saveCustomShoppingItems(_customShoppingItems);
-    notifyListeners();
-  }
 
   UserProvider() {
     _initialLoad();
@@ -453,15 +380,10 @@ class UserProvider with ChangeNotifier {
         _waterIntake = await PersistenceService.getWaterIntake();
         _waterGoal = await PersistenceService.getWaterGoal() ?? (_user!.weightKg * 35).toInt();
         
-        debugPrint('UserProvider: Loading checked ingredients...');
         _checkedIngredients = await PersistenceService.getCheckedIngredients();
-        _customShoppingItems = await PersistenceService.getCustomShoppingItems();
 
         _bdIngredientPrices = PersistenceService.getBdIngredientPricesMap();
         _bdFoodItems = PersistenceService.getAllBdFoodItems();
-        
-        debugPrint('UserProvider: Loading sugar readings...');
-        _sugarReadings = await PersistenceService.getSugarReadings();
 
         debugPrint('UserProvider: Loading workout data...');
         _burnedCalories = await PersistenceService.getBurnedCalories();

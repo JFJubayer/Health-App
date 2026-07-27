@@ -9,8 +9,6 @@ import '../hive/entities/meal_template_entity.dart';
 import '../hive/entities/day_plan_entity.dart';
 import '../hive/entities/meal_memory_entity.dart';
 import '../hive/entities/user_meal_preference_entity.dart';
-import '../models/shopping_item.dart';
-import '../models/sugar_reading.dart';
 import '../bd_food_db/models/food_models.dart';
 
 class PersistenceService {
@@ -339,46 +337,6 @@ class PersistenceService {
     await prefs.clear();
   }
 
-  static const String _keyCustomShoppingItems = 'custom_shopping_items';
-
-  static Future<void> saveCustomShoppingItems(List<ShoppingItem> items) async {
-    final prefs = await SharedPreferences.getInstance();
-    final itemList = items.map((i) => i.toMap()).toList();
-    await prefs.setString(_keyCustomShoppingItems, jsonEncode(itemList));
-  }
-
-  static Future<List<ShoppingItem>> getCustomShoppingItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_keyCustomShoppingItems);
-    if (data == null) return [];
-
-    final List<dynamic> jsonList = jsonDecode(data);
-    return jsonList.map((m) => ShoppingItem.fromMap(m)).toList();
-  }
-
-  static const String _keySugarReadings = 'sugar_readings';
-
-  static Future<void> saveSugarReadings(Map<String, SugarReading> readings) async {
-    final prefs = await SharedPreferences.getInstance();
-    final Map<String, Map<String, dynamic>> serialized = readings.map(
-      (key, value) => MapEntry(key, value.toMap()),
-    );
-    await prefs.setString(_keySugarReadings, jsonEncode(serialized));
-  }
-
-  static Future<Map<String, SugarReading>> getSugarReadings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_keySugarReadings);
-    if (data == null) return {};
-    try {
-      final Map<String, dynamic> decoded = jsonDecode(data);
-      return decoded.map(
-        (key, value) => MapEntry(key, SugarReading.fromMap(value)),
-      );
-    } catch (_) {
-      return {};
-    }
-  }
 
   // bd_food_db helper methods
   static List<FoodItem> getAllBdFoodItems() {
