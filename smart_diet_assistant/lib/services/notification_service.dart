@@ -58,7 +58,7 @@ class NotificationService {
       _ensureTimezoneReady();
     }
 
-    const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@drawable/ic_notification');
 
     const dynamic initializationSettingsDarwin = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -208,6 +208,7 @@ class NotificationService {
         channelDescription: channelDescription,
         importance: Importance.high,
         priority: Priority.high,
+        icon: '@drawable/ic_notification',
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction('yes_250', 'Yes, 250ml', showsUserInterface: true),
           AndroidNotificationAction('yes_500', 'Yes, 500ml', showsUserInterface: true),
@@ -251,6 +252,7 @@ class NotificationService {
       channelDescription: fastingChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();
@@ -298,6 +300,7 @@ class NotificationService {
       channelDescription: weightChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();
@@ -342,6 +345,7 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
+      icon: '@drawable/ic_notification',
       actions: <AndroidNotificationAction>[
         AndroidNotificationAction('yes_250', 'Yes, 250ml', showsUserInterface: true),
         AndroidNotificationAction('yes_500', 'Yes, 500ml', showsUserInterface: true),
@@ -375,6 +379,7 @@ class NotificationService {
       channelDescription: workoutChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();

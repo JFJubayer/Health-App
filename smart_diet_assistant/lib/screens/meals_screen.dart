@@ -104,25 +104,28 @@ class _MealsScreenState extends State<MealsScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'Meals',
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+      ),
       body: SafeArea(
+        top: false,
         bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 110), // Safe spacing for navigation bar
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 110), // Safe spacing for navigation bar
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Page Heading
-              Text(
-                'Meals',
-                style: GoogleFonts.outfit(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-
-              const SizedBox(height: 24),
 
               // Categories Row
               SizedBox(
