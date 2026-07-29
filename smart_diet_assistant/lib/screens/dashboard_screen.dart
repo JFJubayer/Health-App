@@ -73,9 +73,20 @@ class DashboardScreen extends StatelessWidget {
             child: IconButton(
               tooltip: 'Export PDF Report',
               icon: Icon(Icons.picture_as_pdf_outlined, color: theme.colorScheme.onSurface),
-              onPressed: () {
+              onPressed: () async {
                 if (userProvider.user != null) {
-                  ExportService.exportToPdf(userProvider.user!, userProvider.mealPlan);
+                  final calorieHistory = await userProvider.getCalorieHistory(7);
+                  final workoutHistory = await userProvider.getWorkoutHistory(7);
+                  await ExportService.exportToPdf(
+                    userProvider.user!,
+                    userProvider.mealPlan,
+                    calorieHistory: calorieHistory,
+                    workoutHistory: workoutHistory,
+                    calorieTarget: userProvider.calorieTarget,
+                    proteinTarget: userProvider.proteinTarget,
+                    carbsTarget: userProvider.carbsTarget,
+                    fatTarget: userProvider.fatTarget,
+                  );
                 }
               },
             ),

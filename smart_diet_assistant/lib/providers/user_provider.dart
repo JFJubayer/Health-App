@@ -699,23 +699,26 @@ class UserProvider with ChangeNotifier {
           : MacroTargets.balanced(_calorieTarget);
 
       if (!_currentDayPlan!.breakfastLocked) {
-         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.breakfast, limit: null);
          if (options.isNotEmpty) {
-           _currentDayPlan!.breakfastId = options.first.id;
+           final unused = options.where((o) => o.id != _currentDayPlan!.breakfastId).toList();
+           _currentDayPlan!.breakfastId = (unused.isNotEmpty ? unused.first : options.first).id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.lunchLocked) {
-         final options = selector.selectMeals(targetCalories: _calorieTarget*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.4, macros: macros, conditions: _user?.conditions ?? [], type: MealType.lunch, limit: null);
          if (options.isNotEmpty) {
-           _currentDayPlan!.lunchId = options.first.id;
+           final unused = options.where((o) => o.id != _currentDayPlan!.lunchId).toList();
+           _currentDayPlan!.lunchId = (unused.isNotEmpty ? unused.first : options.first).id;
            needsSave = true;
          }
       }
       if (!_currentDayPlan!.dinnerLocked) {
-         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner);
+         final options = selector.selectMeals(targetCalories: _calorieTarget*0.3, macros: macros, conditions: _user?.conditions ?? [], type: MealType.dinner, limit: null);
          if (options.isNotEmpty) {
-           _currentDayPlan!.dinnerId = options.first.id;
+           final unused = options.where((o) => o.id != _currentDayPlan!.dinnerId).toList();
+           _currentDayPlan!.dinnerId = (unused.isNotEmpty ? unused.first : options.first).id;
            needsSave = true;
          }
       }
@@ -998,9 +1001,9 @@ class UserProvider with ChangeNotifier {
     _buildMealPlanFromDayPlan();
   }
 
-  Future<List<DayPlanEntity>> getWeeklyPlans(DateTime weekStart) async {
+  Future<List<DayPlanEntity>> getWeeklyPlans(DateTime weekStart, {Set<String> previousPlanMealIds = const {}}) async {
     if (_user == null) return [];
-    return await WeeklyPlanService.generateWeek(weekStart, _user!, _tdee);
+    return await WeeklyPlanService.generateWeek(weekStart, _user!, _tdee, previousPlanMealIds: previousPlanMealIds);
   }
 
   Future<List<Map<String, dynamic>>> getCalorieHistory(int days) async {
@@ -1046,21 +1049,35 @@ class UserProvider with ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     
+    final Set<String> previousMealIds = {};
+
     for (var plan in existingPlans) {
       if (plan.date.isBefore(today)) continue;
       
       bool changed = false;
-      if (!plan.breakfastLocked) { plan.breakfastId = null; changed = true; }
-      if (!plan.lunchLocked) { plan.lunchId = null; changed = true; }
-      if (!plan.dinnerLocked) { plan.dinnerId = null; changed = true; }
+      if (!plan.breakfastLocked) {
+        if (plan.breakfastId != null) previousMealIds.add(plan.breakfastId!);
+        plan.breakfastId = null;
+        changed = true;
+      }
+      if (!plan.lunchLocked) {
+        if (plan.lunchId != null) previousMealIds.add(plan.lunchId!);
+        plan.lunchId = null;
+        changed = true;
+      }
+      if (!plan.dinnerLocked) {
+        if (plan.dinnerId != null) previousMealIds.add(plan.dinnerId!);
+        plan.dinnerId = null;
+        changed = true;
+      }
       
       if (changed) {
         await PersistenceService.saveDayPlan(plan);
       }
     }
 
-    // Generate week will automatically fill in the null slots we just created
-    await getWeeklyPlans(weekStart);
+    // Generate week will automatically fill in the null slots avoiding previousMealIds
+    await getWeeklyPlans(weekStart, previousPlanMealIds: previousMealIds);
     
     // Update today's plan if it was in the regenerated week
     final nowStr = now.toIso8601String().substring(0, 10);
