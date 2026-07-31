@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/user_provider.dart';
 import '../widgets/active_workout_floating_bar.dart';
 import 'dashboard_screen.dart';
 import 'meals_screen.dart';

@@ -23,7 +23,7 @@ class _BazaarPricesScreenState extends State<BazaarPricesScreen> {
     final prices = userProvider.bdIngredientPrices.values.toList();
 
     // Get unique categories for filtering
-    final categories = ['All', ...prices.map((p) => p.category).toSet().toList()];
+    final categories = ['All', ...prices.map((p) => p.category).toSet()];
 
     // Filter prices based on search query and category
     final filteredPrices = prices.where((price) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/user_provider.dart';
-import '../models/user_model.dart';
+
 import '../services/health_service.dart';
 import 'glass_card.dart';
 

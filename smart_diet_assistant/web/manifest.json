@@ -1,6 +1,6 @@
 {
-    "name": "smart_diet_assistant",
-    "short_name": "smart_diet_assistant",
+    "name": "CalMeter",
+    "short_name": "CalMeter",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

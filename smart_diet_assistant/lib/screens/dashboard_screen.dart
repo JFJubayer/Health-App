@@ -6,9 +6,11 @@ import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
 
 import 'weekly_plan_screen.dart';
+import 'workouts_screen.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/segmented_calorie_arc.dart';
 import '../widgets/water_tracker_widget.dart';
+import '../widgets/smart_alert_banner.dart';
 import '../services/export_service.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -73,9 +75,20 @@ class DashboardScreen extends StatelessWidget {
             child: IconButton(
               tooltip: 'Export PDF Report',
               icon: Icon(Icons.picture_as_pdf_outlined, color: theme.colorScheme.onSurface),
-              onPressed: () {
+              onPressed: () async {
                 if (userProvider.user != null) {
-                  ExportService.exportToPdf(userProvider.user!, userProvider.mealPlan);
+                  final calorieHistory = await userProvider.getCalorieHistory(7);
+                  final workoutHistory = await userProvider.getWorkoutHistory(7);
+                  await ExportService.exportToPdf(
+                    userProvider.user!,
+                    userProvider.mealPlan,
+                    calorieHistory: calorieHistory,
+                    workoutHistory: workoutHistory,
+                    calorieTarget: userProvider.calorieTarget,
+                    proteinTarget: userProvider.proteinTarget,
+                    carbsTarget: userProvider.carbsTarget,
+                    fatTarget: userProvider.fatTarget,
+                  );
                 }
               },
             ),
@@ -101,6 +114,20 @@ class DashboardScreen extends StatelessWidget {
             ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.95, 0.95)),
 
             const SizedBox(height: 16),
+
+            // Smart Alert Banners
+            if (userProvider.shouldShowCalorieWarning)
+              SmartAlertBanner.calorieWarning(userProvider: userProvider),
+            if (userProvider.shouldShowWorkoutAlert)
+              SmartAlertBanner.workoutReminder(
+                userProvider: userProvider,
+                onNavigateToWorkouts: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WorkoutsScreen()),
+                  );
+                },
+              ),
 
             // 7 Day Streak Counter
             _buildStreakCounter(context, userProvider, isDark)
@@ -147,9 +174,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ],
 
-            // const SizedBox(height: 16),
-            const Divider(height: 32),
-            const SizedBox(height: 8),
+            const Divider(height: 16),
 
             // Supplementary Utilities (Water & Fasting) gracefully nested below
             Text(
@@ -160,7 +185,7 @@ class DashboardScreen extends StatelessWidget {
                 color: theme.colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             const WaterTrackerWidget().animate().fadeIn(delay: 500.ms),
             const SizedBox(height: 16),
             // const FastingTimerWidget().animate().fadeIn(delay: 600.ms),
@@ -373,14 +398,18 @@ class DashboardScreen extends StatelessWidget {
     final streak = userProvider.gamification.currentStreak;
     final longestStreak = userProvider.gamification.longestStreak;
 
-    // Generate rolling last 7 days ending with today.
     final today = DateTime.now();
     final lastActive = userProvider.gamification.lastActiveDate ?? today;
 
     // Normalizing a date to clear time components for exact day difference calculations.
     DateTime normalize(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
+    final normalizedToday = normalize(today);
     final normalizedLastActive = normalize(lastActive);
+
+    // Current calendar week: Monday (index 0) through Sunday (index 6).
+    // today.weekday: 1 = Monday … 7 = Sunday.
+    final monday = normalizedToday.subtract(Duration(days: today.weekday - 1));
 
     return Container(
       width: double.infinity,
@@ -427,16 +456,25 @@ class DashboardScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(7, (index) {
-              final day = today.subtract(Duration(days: 6 - index));
+              // index 0 = Monday, index 6 = Sunday of the current week.
+              final day = monday.add(Duration(days: index));
               final normalizedDay = normalize(day);
-              
+
+              // A day is "active" only if:
+              //   1. It is on or before today (future days within the week stay inactive).
+              //   2. It falls within the streak window counting back from lastActiveDate.
               final diff = normalizedLastActive.difference(normalizedDay).inDays;
-              final isActive = normalizedDay.isBefore(normalizedLastActive) || normalizedDay.isAtSameMomentAs(normalizedLastActive)
-                  ? (diff < streak && diff >= 0)
-                  : false;
-              
-              final isToday = normalizedDay.isAtSameMomentAs(normalize(today));
-              final weekdayLetter = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
+              final isWithinStreak = (normalizedDay.isBefore(normalizedLastActive) ||
+                      normalizedDay.isAtSameMomentAs(normalizedLastActive)) &&
+                  diff >= 0 &&
+                  diff < streak;
+              final isActive = isWithinStreak &&
+                  (normalizedDay.isBefore(normalizedToday) ||
+                      normalizedDay.isAtSameMomentAs(normalizedToday));
+
+              final isToday = normalizedDay.isAtSameMomentAs(normalizedToday);
+              final isFuture = normalizedDay.isAfter(normalizedToday);
+              final weekdayLetter = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][index];
 
               return Column(
                 children: [
@@ -474,7 +512,7 @@ class DashboardScreen extends StatelessWidget {
                               size: 16,
                             )
                           : Text(
-                              day.day.toString(),
+                              isFuture ? '–' : day.day.toString(),
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,

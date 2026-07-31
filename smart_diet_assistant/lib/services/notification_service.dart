@@ -58,7 +58,7 @@ class NotificationService {
       _ensureTimezoneReady();
     }
 
-    const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const dynamic initializationSettingsAndroid = AndroidInitializationSettings('@drawable/ic_notification');
 
     const dynamic initializationSettingsDarwin = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -208,6 +208,7 @@ class NotificationService {
         channelDescription: channelDescription,
         importance: Importance.high,
         priority: Priority.high,
+        icon: '@drawable/ic_notification',
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction('yes_250', 'Yes, 250ml', showsUserInterface: true),
           AndroidNotificationAction('yes_500', 'Yes, 500ml', showsUserInterface: true),
@@ -251,6 +252,7 @@ class NotificationService {
       channelDescription: fastingChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();
@@ -298,6 +300,7 @@ class NotificationService {
       channelDescription: weightChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();
@@ -342,6 +345,7 @@ class NotificationService {
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
+      icon: '@drawable/ic_notification',
       actions: <AndroidNotificationAction>[
         AndroidNotificationAction('yes_250', 'Yes, 250ml', showsUserInterface: true),
         AndroidNotificationAction('yes_500', 'Yes, 500ml', showsUserInterface: true),
@@ -375,6 +379,7 @@ class NotificationService {
       channelDescription: workoutChannelDescription,
       importance: Importance.high,
       priority: Priority.high,
+      icon: '@drawable/ic_notification',
     );
     
     const dynamic iosDetails = DarwinNotificationDetails();
@@ -398,5 +403,117 @@ class NotificationService {
   static Future<void> cancelWorkoutNotifications() async {
     if (kIsWeb) return;
     await _notificationsPlugin.cancel(id: 777);
+  }
+
+  /// Schedules daily workout reminder notifications at 3:30 PM (id 770) and 8:30 PM (id 771).
+  /// If the user has already worked out today, cancels the reminders.
+  static Future<void> scheduleWorkoutReminderNotifications(bool hasWorkedOutToday) async {
+    if (!_supportsScheduledNotifications) return;
+
+    // Always cancel first so we can re-evaluate
+    await cancelWorkoutReminderNotifications();
+
+    // If the user already worked out, no need to schedule
+    if (hasWorkedOutToday) return;
+
+    _ensureTimezoneReady();
+    final now = DateTime.now();
+
+    const dynamic androidDetails = AndroidNotificationDetails(
+      workoutChannelId,
+      workoutChannelName,
+      channelDescription: workoutChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+    );
+
+    const dynamic iosDetails = DarwinNotificationDetails();
+
+    // 3:30 PM reminder
+    var time330 = DateTime(now.year, now.month, now.day, 15, 30);
+    if (time330.isBefore(now)) {
+      time330 = time330.add(const Duration(days: 1));
+    }
+
+    await _notificationsPlugin.zonedSchedule(
+      id: 770,
+      title: '🏋️ Don\'t skip today!',
+      body: 'You haven\'t logged a workout yet. Even 15 minutes counts!',
+      scheduledDate: tz.TZDateTime.from(time330, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+
+    // 8:30 PM reminder
+    var time830 = DateTime(now.year, now.month, now.day, 20, 30);
+    if (time830.isBefore(now)) {
+      time830 = time830.add(const Duration(days: 1));
+    }
+
+    await _notificationsPlugin.zonedSchedule(
+      id: 771,
+      title: '🏋️ Last chance to move today!',
+      body: 'Still no workout logged. A short walk or stretch can make a difference!',
+      scheduledDate: tz.TZDateTime.from(time830, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// Cancels workout reminder notifications (IDs 770 & 771).
+  static Future<void> cancelWorkoutReminderNotifications() async {
+    if (kIsWeb) return;
+    await _notificationsPlugin.cancel(id: 770);
+    await _notificationsPlugin.cancel(id: 771);
+  }
+
+  /// Shows an immediate high-calorie warning notification for users on a weight loss plan.
+  static Future<void> showHighCalorieWarning(int consecutiveOverDays) async {
+    if (kIsWeb) return;
+    if (consecutiveOverDays < 1) return;
+
+    String title;
+    String body;
+
+    if (consecutiveOverDays == 1) {
+      title = '⚠️ Calorie overspend alert';
+      body = 'You\'ve exceeded your daily calorie goal by over 15%. Consider lighter meals to stay on track.';
+    } else if (consecutiveOverDays == 2) {
+      title = '⚠️ Calorie overspend alert';
+      body = 'You\'ve been over your calorie goal for 2 days in a row. Consider lighter meals today to get back on track.';
+    } else {
+      title = '🚨 Warning: $consecutiveOverDays-day calorie streak';
+      body = 'You\'ve exceeded your calorie target for $consecutiveOverDays consecutive days. This is slowing your weight loss progress.';
+    }
+
+    const dynamic androidDetails = AndroidNotificationDetails(
+      weightChannelId,
+      weightChannelName,
+      channelDescription: weightChannelDescription,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@drawable/ic_notification',
+    );
+
+    const dynamic iosDetails = DarwinNotificationDetails();
+
+    await _notificationsPlugin.show(
+      id: 880,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+    );
   }
 }

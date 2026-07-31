@@ -26,6 +26,7 @@ dependencies:
   intl: ^0.20.2
   flutter_native_splash: ^2.4.7
   water_animation: ^0.0.3
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +40,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/icons/
 
 flutter_native_splash:
   # This package generates native code to customize Flutter's default white native splash screen

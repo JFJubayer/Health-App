@@ -181,7 +181,6 @@ class _CalorieGraphWidgetState extends State<CalorieGraphWidget> with SingleTick
     if (maxY == 0) maxY = 2000;
 
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final secondaryColor = Theme.of(context).colorScheme.secondary;
 
     return LineChart(
       LineChartData(

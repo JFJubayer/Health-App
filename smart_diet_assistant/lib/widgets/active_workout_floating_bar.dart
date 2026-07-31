@@ -75,7 +75,11 @@ class ActiveWorkoutFloatingBar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      isComplete ? 'Complete! 🎉' : _formatDuration(remainingSeconds),
+                      isComplete
+                          ? 'Complete! 🎉'
+                          : (provider.isActiveWorkoutPaused
+                              ? 'Paused · ${_formatDuration(remainingSeconds)}'
+                              : _formatDuration(remainingSeconds)),
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -99,40 +103,65 @@ class ActiveWorkoutFloatingBar extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Action button
-          GestureDetector(
-            onTap: () {
-              if (isComplete) {
-                // Complete/Save workout
-                provider.completeWorkout();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${workout.name} saved successfully!',
-                      style: GoogleFonts.outfit(),
+          // Action buttons
+          Row(
+            children: [
+              if (!isComplete) ...[
+                GestureDetector(
+                  onTap: () => provider.togglePauseResumeWorkout(),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: workout.color.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
                     ),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Icon(
+                      provider.isActiveWorkoutPaused
+                          ? Icons.play_arrow_rounded
+                          : Icons.pause_rounded,
+                      color: workout.color,
+                      size: 18,
+                    ),
                   ),
-                );
-              } else {
-                // End early
-                provider.stopWorkoutEarly();
-              }
-            },
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isComplete ? const Color(0xFF00B894) : workout.color,
-                shape: BoxShape.circle,
+                ),
+                const SizedBox(width: 8),
+              ],
+              GestureDetector(
+                onTap: () {
+                  if (isComplete) {
+                    // Complete/Save workout
+                    provider.completeWorkout();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${workout.name} saved successfully!',
+                          style: GoogleFonts.outfit(),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  } else {
+                    // End early
+                    provider.stopWorkoutEarly();
+                  }
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isComplete ? const Color(0xFF00B894) : workout.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isComplete ? Icons.check_rounded : Icons.stop_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
               ),
-              child: Icon(
-                isComplete ? Icons.check_rounded : Icons.stop_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
+            ],
           ),
         ],
       ),

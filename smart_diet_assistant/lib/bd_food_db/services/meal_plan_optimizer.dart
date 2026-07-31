@@ -287,7 +287,7 @@ class _DowngradeResult {
 /// single best-scoring dish, while still respecting a repeat cap.
 class _CategoryRotator {
   final List<FoodItem> sortedByValue;
-  final int topK;
+  final int topK = 5;
   final int maxRepeats;
   final Random random;
   final Map<String, int> _usage = {};
@@ -295,7 +295,6 @@ class _CategoryRotator {
 
   _CategoryRotator(
     this.sortedByValue, {
-    this.topK = 5,
     this.maxRepeats = 3,
     required this.random,
   });
