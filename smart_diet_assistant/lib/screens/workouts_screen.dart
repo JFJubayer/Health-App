@@ -1064,6 +1064,8 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
     final isCurrentActive = provider.activeWorkoutName == widget.workout.name;
 
     final isTimerRunning = isCurrentActive && provider.isActiveWorkoutRunning;
+    final isTimerPaused = isCurrentActive && provider.isActiveWorkoutPaused;
+    final isTimerActive = isTimerRunning || isTimerPaused;
     final isTimerComplete = isCurrentActive && provider.isActiveWorkoutComplete;
     final elapsedSeconds = isCurrentActive ? provider.activeWorkoutElapsedSeconds : 0;
     final duration = isCurrentActive ? (provider.activeWorkoutDurationMinutes ?? _selectedDuration) : _selectedDuration;
@@ -1136,7 +1138,7 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
           const SizedBox(height: 24),
 
           // Duration selector or timer
-          if (!isTimerRunning && !isTimerComplete) ...[
+          if (!isTimerActive && !isTimerComplete) ...[
             Text(
               'Select Duration',
               style: GoogleFonts.outfit(
@@ -1221,8 +1223,8 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
             ),
           ],
 
-          // Timer running
-          if (isTimerRunning) ...[
+          // Timer active (running or paused)
+          if (isTimerActive) ...[
             const SizedBox(height: 8),
             SizedBox(
               width: 160,
@@ -1237,7 +1239,9 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                       value: timerProgress,
                       strokeWidth: 10,
                       backgroundColor: isDark ? const Color(0xFF3E3F43) : const Color(0xFFE5E0DA),
-                      valueColor: AlwaysStoppedAnimation(widget.workout.color),
+                      valueColor: AlwaysStoppedAnimation(
+                        isTimerPaused ? Colors.orange : widget.workout.color,
+                      ),
                       strokeCap: StrokeCap.round,
                     ),
                   ),
@@ -1261,6 +1265,24 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                           color: widget.workout.color,
                         ),
                       ),
+                      if (isTimerPaused) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'PAUSED',
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -1279,6 +1301,27 @@ class _WorkoutSessionSheetState extends State<_WorkoutSessionSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     child: Text('End Early', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => provider.togglePauseResumeWorkout(),
+                    icon: Icon(
+                      isTimerPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 20,
+                    ),
+                    label: Text(
+                      isTimerPaused ? 'Resume' : 'Pause',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.workout.color,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
                   ),
                 ),
               ],

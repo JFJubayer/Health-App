@@ -50,9 +50,16 @@ class UserProvider with ChangeNotifier {
   DateTime? _activeWorkoutStartTime;
   int? _activeWorkoutDurationMinutes;
   bool _isActiveWorkoutRunning = false;
+  bool _isActiveWorkoutPaused = false;
   bool _isActiveWorkoutComplete = false;
   int _activeWorkoutElapsedSeconds = 0;
   Timer? _activeWorkoutTimer;
+
+  // Smart alert system state
+  int _consecutiveOverCalorieDays = 0;
+  bool _workoutAlertDismissedToday = false;
+  bool _calorieWarningDismissedToday = false;
+  bool _calorieWarningNotificationSentToday = false;
 
   Map<String, IngredientPrice> _bdIngredientPrices = {};
   List<FoodItem> _bdFoodItems = [];
@@ -109,10 +116,27 @@ class UserProvider with ChangeNotifier {
   DateTime? get activeWorkoutStartTime => _activeWorkoutStartTime;
   int? get activeWorkoutDurationMinutes => _activeWorkoutDurationMinutes;
   bool get isActiveWorkoutRunning => _isActiveWorkoutRunning;
+  bool get isActiveWorkoutPaused => _isActiveWorkoutPaused;
   bool get isActiveWorkoutComplete => _isActiveWorkoutComplete;
   int get activeWorkoutElapsedSeconds => _activeWorkoutElapsedSeconds;
   String get _todayDateStr =>
       DateTime.now().toIso8601String().substring(0, 10);
+
+  // Smart alert getters
+  int get consecutiveOverCalorieDays => _consecutiveOverCalorieDays;
+  bool get isCalorieThresholdExceededToday =>
+      _calorieTarget > 0 && totalConsumedCalories > (_calorieTarget * 1.15);
+  int get effectiveOverCalorieDays =>
+      _consecutiveOverCalorieDays + (isCalorieThresholdExceededToday ? 1 : 0);
+
+  bool get shouldShowWorkoutAlert =>
+      _workoutLogs.isEmpty &&
+      !_workoutAlertDismissedToday &&
+      DateTime.now().hour >= 15;
+  bool get shouldShowCalorieWarning =>
+      isWeightManagementActive &&
+      (isCalorieThresholdExceededToday || _consecutiveOverCalorieDays >= 1) &&
+      !_calorieWarningDismissedToday;
 
   bool isMainPlanMeal(String mealId) {
     if (_currentDayPlan == null) return false;
@@ -160,6 +184,8 @@ class UserProvider with ChangeNotifier {
     await PersistenceService.saveBurnedCalories(_burnedCalories);
     await PersistenceService.saveWorkoutLogs(_todayDateStr, _workoutLogs);
     _saveCurrentDailySummary();
+    // Cancel workout reminders since user has now worked out
+    await NotificationService.cancelWorkoutReminderNotifications();
     notifyListeners();
   }
 
@@ -209,13 +235,60 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> pauseWorkout() async {
+    if (_activeWorkoutStartTime != null && _isActiveWorkoutRunning) {
+      _activeWorkoutTimer?.cancel();
+      _isActiveWorkoutRunning = false;
+      _isActiveWorkoutPaused = true;
+      final elapsed = DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
+      _activeWorkoutElapsedSeconds = elapsed;
+
+      await NotificationService.cancelWorkoutNotifications();
+      notifyListeners();
+    }
+  }
+
+  Future<void> resumeWorkout() async {
+    if (_activeWorkoutStartTime != null && _isActiveWorkoutPaused) {
+      _isActiveWorkoutPaused = false;
+      _isActiveWorkoutRunning = true;
+      _activeWorkoutStartTime = DateTime.now().subtract(Duration(seconds: _activeWorkoutElapsedSeconds));
+      await PersistenceService.saveActiveWorkoutStartTime(_activeWorkoutStartTime);
+
+      final totalSeconds = (_activeWorkoutDurationMinutes ?? 0) * 60;
+      final remainingSeconds = totalSeconds - _activeWorkoutElapsedSeconds;
+      if (remainingSeconds > 0) {
+        final remainingMinutes = (remainingSeconds / 60).ceil();
+        await NotificationService.scheduleWorkoutEndNotification(
+          _activeWorkoutName ?? 'Workout',
+          DateTime.now(),
+          remainingMinutes,
+        );
+      }
+
+      _startLocalTimer();
+      notifyListeners();
+    }
+  }
+
+  Future<void> togglePauseResumeWorkout() async {
+    if (_isActiveWorkoutPaused) {
+      await resumeWorkout();
+    } else if (_isActiveWorkoutRunning) {
+      await pauseWorkout();
+    }
+  }
+
   Future<void> stopWorkoutEarly() async {
     if (_activeWorkoutStartTime != null) {
-      final elapsed = DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
+      final elapsed = _isActiveWorkoutPaused
+          ? _activeWorkoutElapsedSeconds
+          : DateTime.now().difference(_activeWorkoutStartTime!).inSeconds;
       final actualMinutes = (elapsed / 60).ceil();
       
       _activeWorkoutTimer?.cancel();
       _isActiveWorkoutRunning = false;
+      _isActiveWorkoutPaused = false;
       _isActiveWorkoutComplete = true;
       _activeWorkoutElapsedSeconds = elapsed;
 
@@ -259,6 +332,7 @@ class UserProvider with ChangeNotifier {
     _activeWorkoutStartTime = null;
     _activeWorkoutDurationMinutes = null;
     _isActiveWorkoutRunning = false;
+    _isActiveWorkoutPaused = false;
     _isActiveWorkoutComplete = false;
     _activeWorkoutElapsedSeconds = 0;
 
@@ -530,6 +604,10 @@ class UserProvider with ChangeNotifier {
           await PersistenceService.saveDayPlan(_currentDayPlan!);
           _buildMealPlanFromDayPlan();
         }
+
+        _workoutAlertDismissedToday = false;
+        _calorieWarningDismissedToday = false;
+        _calorieWarningNotificationSentToday = false;
       }
     } else {
       _gamification.currentStreak = 1;
@@ -538,11 +616,60 @@ class UserProvider with ChangeNotifier {
     _gamification.lastActiveDate = now;
     PersistenceService.saveGamification(_gamification);
     _saveCurrentDailySummary();
+
+    // Compute consecutive over-calorie days for smart alerts
+    await _computeConsecutiveOverCalorieDays();
+  }
+
+  /// Looks back up to 7 days to count how many consecutive past days
+  /// the user exceeded their calorie target by more than 15%.
+  Future<void> _computeConsecutiveOverCalorieDays() async {
+    if (_user == null || _calorieTarget <= 0) {
+      _consecutiveOverCalorieDays = 0;
+      return;
+    }
+
+    final threshold = _calorieTarget * 1.15;
+    int streak = 0;
+    final now = DateTime.now();
+
+    for (int i = 1; i <= 7; i++) {
+      final date = now.subtract(Duration(days: i));
+      final dateStr = date.toIso8601String().substring(0, 10);
+      final summary = await PersistenceService.getDailySummary(dateStr);
+
+      if (summary == null) break;
+
+      final int consumed = summary['calories'] ?? 0;
+      if (consumed > threshold) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    _consecutiveOverCalorieDays = streak;
+
+    // Fire notification if weight management is active and streak >= 1
+    if (isWeightManagementActive && streak >= 1) {
+      await NotificationService.showHighCalorieWarning(streak);
+      _calorieWarningNotificationSentToday = true;
+    }
   }
 
   void _saveCurrentDailySummary() {
     final nowStr = DateTime.now().toIso8601String().substring(0, 10);
     PersistenceService.saveDailySummary(nowStr, totalConsumedCalories, _waterIntake, burnedCalories: _burnedCalories);
+    _checkCalorieOverageAndNotify();
+  }
+
+  void _checkCalorieOverageAndNotify() {
+    if (!isWeightManagementActive) return;
+    if (isCalorieThresholdExceededToday && !_calorieWarningNotificationSentToday) {
+      _calorieWarningNotificationSentToday = true;
+      final days = effectiveOverCalorieDays;
+      NotificationService.showHighCalorieWarning(days > 0 ? days : 1);
+    }
   }
 
   void addWater(int ml) {
@@ -577,6 +704,19 @@ class UserProvider with ChangeNotifier {
     } else {
       NotificationService.cancelWeightManagementReminder();
     }
+
+    // Workout reminder notifications (3:30 PM & 8:30 PM)
+    NotificationService.scheduleWorkoutReminderNotifications(_workoutLogs.isNotEmpty);
+  }
+
+  void dismissWorkoutAlert() {
+    _workoutAlertDismissedToday = true;
+    notifyListeners();
+  }
+
+  void dismissCalorieWarning() {
+    _calorieWarningDismissedToday = true;
+    notifyListeners();
   }
 
   void setWaterGoal(int ml) {

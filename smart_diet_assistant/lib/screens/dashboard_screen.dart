@@ -6,9 +6,11 @@ import '../providers/user_provider.dart';
 import '../models/meal_model.dart';
 
 import 'weekly_plan_screen.dart';
+import 'workouts_screen.dart';
 import 'meal_detail_screen.dart';
 import '../widgets/segmented_calorie_arc.dart';
 import '../widgets/water_tracker_widget.dart';
+import '../widgets/smart_alert_banner.dart';
 import '../services/export_service.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -112,6 +114,20 @@ class DashboardScreen extends StatelessWidget {
             ).animate().fadeIn(duration: 500.ms).scale(begin: const Offset(0.95, 0.95)),
 
             const SizedBox(height: 16),
+
+            // Smart Alert Banners
+            if (userProvider.shouldShowCalorieWarning)
+              SmartAlertBanner.calorieWarning(userProvider: userProvider),
+            if (userProvider.shouldShowWorkoutAlert)
+              SmartAlertBanner.workoutReminder(
+                userProvider: userProvider,
+                onNavigateToWorkouts: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WorkoutsScreen()),
+                  );
+                },
+              ),
 
             // 7 Day Streak Counter
             _buildStreakCounter(context, userProvider, isDark)
